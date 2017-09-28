@@ -1,0 +1,22 @@
+
+a = \ x y.
+		\w z.
+			(w z (add y x))
+
+b = \x y.
+		\z.
+			(sub z (mul y x))
+
+c =  (a 2 1)
+d = (c add 5)
+(print d)
+
+e = (b 3 5)
+f = (e 30)
+(print f)
+
+f = ((b 3 5) 20)
+(print f)
+
+
+
