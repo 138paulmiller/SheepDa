@@ -1,17 +1,7 @@
-## SheepDa
+# SheepDa
+## A "Soft" Functional Programming Language based on the Lambda Calculus
 
-
-
-s  	: e s				
-	| <var> = e s 		// assignment
-	| <null>
-e 	:	<var>
-	|	<num>			// atom
-	|	 \ p. e 		// abstraction
-	|	(<var> <...> )	// application
-# SheepDa - A "Soft" Functional Programming Language
-
-Sheepda provides a minimal syntax as a "Soft" introduction to the Lambda Calculus.
+Sheepda provides a minimal syntax as a "Soft" introduction to Functional Programming.
 
 #### Syntax:
 	<stmt> 	: <id> = 	
