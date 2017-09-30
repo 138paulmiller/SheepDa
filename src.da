@@ -7,9 +7,9 @@ b = \x y.
 		\z.
 			(sub z (mul y x))
 
-c =  (a 2 1)
-d = (c add 5)
-(print d)
+x =  (a 2 1)
+y = (x add 5)
+(print y)
 
 e = (b 3 5)
 f = (e 30)

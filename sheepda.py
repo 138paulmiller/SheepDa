@@ -248,13 +248,13 @@ def evaluate(root, bindings):
 			count= len(args)
 			params = None
 			local_bindings	= {}
-			# bind all closure and global bindings locally
-			for bind in closure.bindings.keys():
-				local_bindings[bind] = closure.bindings[bind]
+			# bind all closure and calling bindings locally
 			for bind in bindings:
 				local_bindings[bind] = bindings[bind]
-
-
+			# update closure bindings last, will add closure precedence over calling
+			for bind in closure.bindings.keys():
+				local_bindings[bind] = closure.bindings[bind]
+	
 			params = closure.params
 			if len(params) != count:
 				expr = (ERROR, "Incorrect argument amount passed to application:", var)
