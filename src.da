@@ -18,5 +18,9 @@ f = (e 30)
 f = ((b 3 5) 20)
 (print f)
 
+t = \ x . ( print (t x))
+
+(t 3)
+
 
 

@@ -46,14 +46,14 @@ def main():
 	# evaluate each expr in ast
 	for node in ast:
 		evaluate(node, bindings)
-		'''		
+			
 		# print variable bindings
-		print '----------VARS----------'
-		for var in bindings.items():
-			print var
-		print '------------------------'
-		raw_input()
-		'''
+		# print '----------VARS----------'
+		# for var in bindings.items():
+		# 	print var
+		# print '------------------------'
+		# raw_input()
+		
 class Lexer:
 	'''
 	 Returns tokens (tag, value)
@@ -243,12 +243,18 @@ def evaluate(root, bindings):
 		else:
 			closure = bindings[var]
 		# if closure was found
+		
 		if isinstance(closure, Closure):
 			count= len(args)
 			params = None
 			local_bindings	= {}
+			# bind all closure and global bindings locally
 			for bind in closure.bindings.keys():
 				local_bindings[bind] = closure.bindings[bind]
+			for bind in bindings:
+				local_bindings[bind] = bindings[bind]
+
+
 			params = closure.params
 			if len(params) != count:
 				expr = (ERROR, "Incorrect argument amount passed to application:", var)
