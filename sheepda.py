@@ -12,7 +12,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 '''
-
+DEBUG = True
 
 '''
 AST Node Tags
@@ -45,14 +45,15 @@ def main():
 	bindings = {} 
 	# evaluate each expr in ast
 	for node in ast:
-		evaluate(node, bindings)
-			
-		# print variable bindings
-		# print '----------VARS----------'
-		# for var in bindings.items():
-		# 	print var
-		# print '------------------------'
-		# raw_input()
+		
+		expr = evaluate(node, bindings)
+		# if DEBUG:
+		# 	#print variable bindings
+			# print '----------VARS----------'
+			# for var in bindings.items():
+			# 	print var
+			# print '------------------------'
+			# raw_input()
 		
 class Lexer:
 	'''
@@ -212,7 +213,7 @@ class Closure:
 		for p in self.params:
 			s+= p + ' '
 		s += ')'
-		# s += ')\n\tBOUND: '
+		# s += ')\n\tBINDINGS: '
 		# for var, value in self.bindings.items():
 		# 	s += '\n\t\t' + var + ': ' + str(value) 
 		return  s
@@ -232,42 +233,54 @@ def evaluate(root, bindings):
 		var = value[0] # get closure id
 		args = value[1]   
 		closure = None
-		# if an application, get the closure
-		if var[0] == APPLY:
-			closure = evaluate(var, bindings)
-		# if application
-		elif var not in bindings:
-			# get builtin closure 
-			closure = evaluate((VAR, var), bindings)
-		# get the closure to be called
-		else:
-			closure = bindings[var]
-		# if closure was found
-		
-		if isinstance(closure, Closure):
-			count= len(args)
-			params = None
-			local_bindings	= {}
-			# bind all closure and calling bindings locally
-			for bind in bindings:
-				local_bindings[bind] = bindings[bind]
-			# update closure bindings last, will add closure precedence over calling
-			for bind in closure.bindings.keys():
-				local_bindings[bind] = closure.bindings[bind]
-	
-			params = closure.params
-			if len(params) != count:
-				expr = (ERROR, "Incorrect argument amount passed to application:", var)
+		# if a control structure
+		if var == 'if':
+			# (if c t f)
+			# args = [cond,  true_stmt, false_stmt]
+			if len(args) == 3:
+				# if condition is not zero, evaluate 
+				if evaluate(args[0], bindings) != 0:
+					expr = evaluate(args[1], bindings)
+				else:
+					expr = evaluate(args[2], bindings)
 			else:
-				# evaluate each argument and bind it to the local level 
-				for i in range(0, count):
-					local_bindings[params[i]] = evaluate(args[i], bindings) 
-			expr = evaluate(closure.expr, local_bindings)
-			if expr == None:
-				expr = (ERROR, str(var) + ' is not bound to this closure')
-		# empty closure, could not find
+				expr = (ERROR, "Incorrect arguments amount passed to application:", var)
+		# not a control structure, so must be a closure 
 		else:
-			expr = (ERROR, str(var) + " is not bound within this application: ")
+			# if an application, get the closure definition
+			if var[0] == APPLY:
+				closure = evaluate(var, bindings)
+			# if not an application, and not user defined, request builtin closure def
+			elif var not in bindings:
+				# get builtin closure 
+				closure = evaluate((VAR, var), bindings)
+			# get the closure to be called
+			else:
+				closure = bindings[var]
+			# if closure was found and not a control structure
+			if isinstance(closure, Closure):
+				count= len(args)
+				params = None
+				local_bindings	= {}
+				# bind all closure and calling bindings locally
+				for bind in bindings:
+					local_bindings[bind] = bindings[bind]
+				# update closure bindings last, will add closure precedence over calling
+				for bind in closure.bindings.keys():
+					local_bindings[bind] = closure.bindings[bind]	
+				params = closure.params
+				if len(params) != count:
+					expr = (ERROR, "Incorrect argument amount passed to application:", var)
+				else:
+					# evaluate each argument and bind it to the local level 
+					for i in range(0, count):
+						local_bindings[params[i]] = evaluate(args[i], bindings) 			
+				expr = evaluate(closure.expr, local_bindings)
+				if expr == None:
+					expr = (ERROR, str(var) + ' is not bound to this closure')
+			# empty closure, could not find
+			else:
+				expr = (ERROR, str(var) + " is not bound within this application: ")
 	elif tag == VAR:
 		if value in bindings:
 			expr = bindings[value] 	
@@ -276,19 +289,19 @@ def evaluate(root, bindings):
 			# if var value did not match nay closures, then not defined yet
 	elif tag == NUM:
 		expr = float(value)
-	elif tag == ERROR:
-		print 'ERROR', expr
 	elif tag == BUILTIN:
 		expr = evaluate_builtin(value, bindings)
 		if expr == None:
 			expr = (ERROR, value + ' is not bound within this context.')
+	else:
+		print 'ERROR', expr
 	return expr
  
 
 def evaluate_builtin(root, bindings):
 
 	expr = None
-	#if var then requesting  closure defition
+	#if var then requesting closure defition
 	if root[0] == VAR:
 		tag, value = root
 		if value == 'add':
