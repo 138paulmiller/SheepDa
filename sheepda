@@ -13,14 +13,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 '''
 DEBUG = True
-
+HELP = 'SheepDa\nUsage -- ./sheepda [<file>|-h]\nType \'quit\'to exit\nHave fun!\n\n'
 '''
 AST Node Tags
 '''
 APPLY 	= 'APPLY' 	# Lambda Application
 CLOSURE = 'CLOSURE'  # Lambda Abstaction
 ASSIGN 	= 'ASSIGN'  # Variable assignement
-BUILTIN 	= 'BUILTIN' # Builtin Variables
+BUILTIN = 'BUILTIN' # Builtin Variables
 
 '''
 Token Symbol Tags
@@ -32,28 +32,35 @@ DOT 	= 'DOT'
 EQUAL	= 'EQUAL'
 VAR 	= 'VAR'
 NUM 	= 'NUM'
+COMMENT = 'COMMENT'
 EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 
-def main():
+def main(args):
 
-	input = file("src.da").read()
-	lexer = Lexer(input)
+	bindings = {} 
+	if len(args) > 0: 
+		if args[0] == '-h':
+			print HELP
+		interpret(file(args[0]).read(), bindings)
+	else: # repl
+		source = raw_input('@>')			
+		while source != 'quit':
+			for expr in interpret(source, bindings):
+				print ':', expr
+			source = raw_input('@>')			
+		print 'Goodbye' 
+def interpret(source, bindings):
+	lexer = Lexer(source)
 	# generate ast [expr ... ]
 	ast = parse(lexer)
 	# global bindings
-	bindings = {} 
+	exprs = []
 	# evaluate each expr in ast
 	for node in ast:
-		
-		expr = evaluate(node, bindings)
-		# if DEBUG:
-		# 	#print variable bindings
-			# print '----------VARS----------'
-			# for var in bindings.items():
-			# 	print var
-			# print '------------------------'
-			# raw_input()
+		exprs.append(evaluate(node, bindings))
+	return exprs
+
 		
 class Lexer:
 	'''
@@ -86,6 +93,12 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
+			elif sym == ';':
+				comment = ''
+				while self.pos < self.len and self.input[self.pos] != '\n':
+					num += self.input[self.pos]
+					self.pos += 1
+				token = (COMMENT, comment) 
 			elif sym.isalpha(): # id
 				var = sym
 				i = self.pos+1
@@ -245,6 +258,7 @@ def evaluate(root, bindings):
 					expr = evaluate(args[2], bindings)
 			else:
 				expr = (ERROR, "Incorrect arguments amount passed to application:", var)
+			
 		# not a control structure, so must be a closure 
 		else:
 			# if an application, get the closure definition
@@ -283,7 +297,7 @@ def evaluate(root, bindings):
 				expr = (ERROR, str(var) + " is not bound within this application: ")
 	elif tag == VAR:
 		if value in bindings:
-			expr = bindings[value] 	
+			expr = bindings[value] 			
 		else:
 			expr = evaluate_builtin(root, bindings)
 			# if var value did not match nay closures, then not defined yet
@@ -304,16 +318,17 @@ def evaluate_builtin(root, bindings):
 	#if var then requesting closure defition
 	if root[0] == VAR:
 		tag, value = root
-		if value == 'add':
-			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], (BUILTIN, 'add'))
-		elif value == 'sub':
-			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], (BUILTIN, 'sub'))
-		elif value == 'mul':
-			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], (BUILTIN, 'mul'))
-		elif value == 'div':
-			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], (BUILTIN, 'div'))
-		elif value == 'print':
-			expr = bindings[value] = Closure(bindings,  ['_x'], (BUILTIN, 'print'))
+		closure_tag = (BUILTIN, value)
+		# binary ops
+		if value == 'add' or  value == 'sub' or value == 'mul' \
+			or value == 'div' or value == 'and' or value == 'or':
+			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
+		elif value == 'not' or value == 'print':
+			expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
+		elif value == 'True':
+			expr = True
+		elif value ==  'False':
+			expr = False	
 	# else ( var, args) call to closure
 	else: 
 		if root == 'add':
@@ -324,6 +339,19 @@ def evaluate_builtin(root, bindings):
 			expr = bindings['_x'] * bindings['_y'] 
 		elif root == 'div':
 			expr = bindings['_x'] / bindings['_y'] 
+		elif root == 'not':
+			expr = not bindings['_x'] 
+		elif root == 'and':
+			left = bindings['_x']
+			right = bindings['_y']	
+			expr = left and right 
+		elif root == 'or':
+			left = bindings['_x']
+			if left:			
+				right =  bindings['_y']
+				expr = left or right
+			else:
+				expr = left
 		elif root == 'print':
 			expr = bindings['_x']
 			print expr 
@@ -331,6 +359,5 @@ def evaluate_builtin(root, bindings):
 
 # Run main after all defintions 
 if __name__ == '__main__':
-	main()
-
-
+	import sys
+	main(sys.argv[1:])
