@@ -8,18 +8,18 @@ Language features closures, dynamic binding and dynamic evaluation with LISP-lik
 To use REPL, call without arguments
 
 ##### Syntax:
- 
-<stmt>	: <id> = <expr>					// Assignment to idetifier
-		| <expr>						// Stand-alone Expression
-		| ; <sym> ... \n				// Comment, ends at newline
-<expr>	: \ <param_id> <...> . <expr>	// Defines an abstraction
-		| (<expr> <expr> <..>)			// Application
-		| <number>						// Integer of Floating point literal
-		| <id>							// Identifier
+	<stmt>	: <id> = <expr>					// Assignment to idetifier
+			| <expr>						// Stand-alone Expression
+			| ; <sym> ... \n				// Comment, ends at newline
+	<expr>	: \ <param_id> <...> . <expr>	// Defines an abstraction
+			| (<expr> <expr> <..>)			// Application
+			| <number>						// Integer of Floating point literal
+			| <id>							// Identifier
 	
 
-TODO:
-*Add Tuple Primitives
-*Tuple/List construction applications Cons and Car 
-*Add Map and Reduce Applications of Tuples
-*Create include file application to load file evaluations into bindings
+### TODO:
+	* Add Tuple Primitives
+	* Tuple/List construction applications Cons and Car 
+	* Add Map and Reduce applications of Tuples
+	* Create include file application to load file evaluations into bindings
+	* FILE I/O print applications
