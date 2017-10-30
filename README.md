@@ -15,6 +15,7 @@ To use REPL, call without arguments
 			| (<expr> <expr> <..>)			// Application
 			| <number>						// Integer of Floating point literal
 			| <id>							// Identifier
+			| "<string>"
 	
 
 ### TODO:

@@ -29,6 +29,7 @@ LPAREN 	= 'LPAREN'
 RPAREN 	= 'RPAREN'
 LAMBDA 	= 'LAMBDA'
 DOT 	= 'DOT'
+STRING	= 'STRING'
 EQUAL	= 'EQUAL'
 VAR 	= 'VAR'
 NUM 	= 'NUM'
@@ -93,10 +94,21 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
+			elif sym == '\"': 
+				string = ""
+				i = self.pos+1
+				while i < self.len and self.input[i] != '\"':
+					string += self.input[i]
+					i += 1
+				if i < self.len:
+					i+=1
+					token = (STRING, string)
+				else:
+					token = (ERROR, 'Missing closing quote')
 			elif sym == ';':
 				comment = ''
 				while self.pos < self.len and self.input[self.pos] != '\n':
-					num += self.input[self.pos]
+					comment += self.input[self.pos]
 					self.pos += 1
 				token = (COMMENT, comment) 
 			elif sym.isalpha(): # id
@@ -106,7 +118,7 @@ class Lexer:
 					var += self.input[i]
 					i+=1
 				token = (VAR, var)
-			elif sym.isdigit(): # id
+			elif sym.isdigit(): 
 				num = sym
 				i = self.pos+1
 				while i <  self.len and self.input[i].isalnum(): 
@@ -127,6 +139,8 @@ class Lexer:
 		if token:
 			# offset input by token lexeme len
 			self.pos += len(token[1])
+			if token[0] == STRING: #offset for both quotes read but not captured
+				self.pos += 2
 		else:
 			token = (ERROR, 'Lexical Error: Unexpected NULL Token') 
 		return token
@@ -165,7 +179,7 @@ def parse_expr(lexer):
 	'''
 	tag, value = lexer.next()
 	root = None
-	if tag == VAR or tag == NUM: # if atom
+	if tag == VAR or tag == NUM or tag == STRING: # if atom
 		 # eat token
 		root = (tag, value)
 		# return 
@@ -180,7 +194,7 @@ def parse_expr(lexer):
 		if tag == DOT:
 			root = (CLOSURE, (bindings, parse_expr(lexer)))
 		else:
-			root = (ERROR, "Syntax Error: Expected " + DOT + " at: " + value)
+			root = (ERROR, 'Syntax Error: Expected ' + DOT + ' at: ' + value)
 	elif tag == LPAREN: # if application
 		# apply first expression to all expressions until rparen
 		expr = None 
@@ -199,11 +213,10 @@ def parse_expr(lexer):
 		lexer.next()
 		root = (APPLY, (expr, args))
 	else:
-		root = (ERROR, "Syntax Error: Unexpected :"+ value)
+		root = (ERROR, 'Syntax Error: Unexpected :'+ value)
 	return root
 
 ##################		Evaluation		##########################
-
 class Closure:
 	'''
 		Closure Container
@@ -257,8 +270,7 @@ def evaluate(root, bindings):
 				else:
 					expr = evaluate(args[2], bindings)
 			else:
-				expr = (ERROR, "Incorrect arguments amount passed to application:", var)
-			
+				expr = (ERROR, 'Incorrect arguments amount passed to application:', var)
 		# not a control structure, so must be a closure 
 		else:
 			# if an application, get the closure definition
@@ -284,7 +296,7 @@ def evaluate(root, bindings):
 					local_bindings[bind] = closure.bindings[bind]	
 				params = closure.params
 				if len(params) != count:
-					expr = (ERROR, "Incorrect argument amount passed to application:", var)
+					expr = (ERROR, 'Incorrect argument amount passed to application:', var)
 				else:
 					# evaluate each argument and bind it to the local level 
 					for i in range(0, count):
@@ -294,15 +306,17 @@ def evaluate(root, bindings):
 					expr = (ERROR, str(var) + ' is not bound to this closure')
 			# empty closure, could not find
 			else:
-				expr = (ERROR, str(var) + " is not bound within this application: ")
+				expr = (ERROR, str(var) + ' is not bound within this application: ')
 	elif tag == VAR:
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
 			expr = evaluate_builtin(root, bindings)
-			# if var value did not match nay closures, then not defined yet
+			# if var value did not match any closures, then not defined yet
 	elif tag == NUM:
 		expr = float(value)
+	elif tag == STRING:
+		expr = str(value)
 	elif tag == BUILTIN:
 		expr = evaluate_builtin(value, bindings)
 		if expr == None:
@@ -331,24 +345,26 @@ def evaluate_builtin(root, bindings):
 			expr = False	
 	# else ( var, args) call to closure
 	else: 
+		left = bindings['_x']
+		if bindings.get('_y'):
+			right = bindings['_y']
+			if isinstance(left, str):
+		 		right = str(right)
 		if root == 'add':
-			expr = bindings['_x'] + bindings['_y'] 
+			expr = left + right 
 		elif root == 'sub':
-			expr = bindings['_x'] - bindings['_y'] 
+			expr = left - right 
 		elif root == 'mul':
-			expr = bindings['_x'] * bindings['_y'] 
+			expr = left * right 
 		elif root == 'div':
-			expr = bindings['_x'] / bindings['_y'] 
+			expr = left / right 
 		elif root == 'not':
-			expr = not bindings['_x'] 
+			expr = not left 
 		elif root == 'and':
-			left = bindings['_x']
-			right = bindings['_y']	
 			expr = left and right 
 		elif root == 'or':
 			left = bindings['_x']
 			if left:			
-				right =  bindings['_y']
 				expr = left or right
 			else:
 				expr = left

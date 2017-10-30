@@ -1,0 +1,5 @@
+x = \x . 
+	\y .
+		(add x y )
+x= ((x "hello") 9)
+(print x)
