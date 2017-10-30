@@ -1,11 +1,20 @@
 # SheepDa
-## A "Soft" Functional Programming Language based on the Lambda Calculus
-Sheepda provides a minimal syntax as a "Soft" introduction to Functional Programming.
-Language features closures, dynamic binding and dynamic evaluation with LISP-like syntax. 
+### A Soft Functional Scripting Language
+Sheepda provides a minimal syntax as a "Soft" introduction to Functional Programming concepts.
+Language features closures, dynamic binding, static scoping, and lazy evaluation with a syntax mixture of LISP and Lamba-Calculus. 
 
 #### Usage
-./sheepda [<file>|-h]
-To use REPL, call without arguments
+See HELP for menu
+
+
+##### Why?
+This project started out as a small toy language to help programmers quickly understand fundamental functional programming concepts such as first-class functions, immutability and lazy-evaluation. 
+
+However, I plan to add many features to help provide programmers with a large enough toolset to transition this toy into a general purpose language. 
+
+Learning SheepDa should be much easier than most languages. 
+Below is the Grammar/Syntax of the language. Notice that there are only statements and expressions!
+
 
 ##### Syntax:
 	<stmt>	: <id> = <expr>					// Assignment to idetifier
@@ -19,8 +28,7 @@ To use REPL, call without arguments
 	
 
 ### TODO:
-	* Add Tuple Primitives
-	* Tuple/List construction applications Cons and Car 
-	* Add Map and Reduce applications of Tuples
-	* Create include file application to load file evaluations into bindings
-	* FILE I/O print applications
+	- [] FILE I/O applications to set where to print
+	- [] List construction applications Cons and Car 
+	- [] Add Map and Reduce applications of Lists to enable Table like
+	- [] Create include file application to load file evaluations into bindings

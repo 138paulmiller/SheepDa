@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 
 '''
-SheepDa - A "Soft" Functional Programming Language
+SheepDa - A "Soft" Functional Scripting Language
 
 Copyright 2017 Paul Miller (github.com/138paulmiller)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 '''
+import sys, os
+VERSION = 0.1
 DEBUG = True
-HELP = 'SheepDa\nUsage -- ./sheepda [<file>|-h]\nType \'quit\'to exit\nHave fun!\n\n'
+HELP = open(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
 '''
 AST Node Tags
 '''
@@ -31,35 +31,43 @@ LAMBDA 	= 'LAMBDA'
 DOT 	= 'DOT'
 STRING	= 'STRING'
 EQUAL	= 'EQUAL'
-VAR 	= 'VAR'
-NUM 	= 'NUM'
+ID 		= 'ID'
+FLOAT 	= 'FLOAT'
+INT 	= 'INT'
 COMMENT = 'COMMENT'
 EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 
 def main(args):
-
 	bindings = {} 
 	if len(args) > 0: 
 		if args[0] == '-h':
 			print HELP
 		interpret(file(args[0]).read(), bindings)
 	else: # repl
-		source = raw_input('@>')			
+		source = raw_input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help!\n\n@>')			
 		while source != 'quit':
-			for expr in interpret(source, bindings):
-				print ':', expr
+			if source == 'help':
+				print HELP
+			elif source == 'unbind':
+				# delete all user defined bindings
+				bindings.clear() 
+			else:
+				for expr in interpret(source, bindings):
+					print expr
 			source = raw_input('@>')			
 		print 'Goodbye' 
+
 def interpret(source, bindings):
 	lexer = Lexer(source)
 	# generate ast [expr ... ]
 	ast = parse(lexer)
-	# global bindings
 	exprs = []
 	# evaluate each expr in ast
 	for node in ast:
-		exprs.append(evaluate(node, bindings))
+		expr = evaluate(node, bindings)			
+		#print expr	
+		exprs.append(expr)
 	return exprs
 
 		
@@ -112,12 +120,12 @@ class Lexer:
 					self.pos += 1
 				token = (COMMENT, comment) 
 			elif sym.isalpha(): # id
-				var = sym
+				def_id = sym
 				i = self.pos+1
 				while i <  self.len and self.input[i].isalnum(): 
-					var += self.input[i]
+					def_id += self.input[i]
 					i+=1
-				token = (VAR, var)
+				token = (ID, def_id)
 			elif sym.isdigit(): 
 				num = sym
 				i = self.pos+1
@@ -125,51 +133,56 @@ class Lexer:
 					num += self.input[i]
 					i+=1
 				if i < len(self.input) and self.input[i] == '.':
+					num += self.input[i]
+					i+=1					
 					while i < self.len and \
 						self.input[i].isalnum(): 
 						num += self.input[i]
 						i+=1
-				token = (NUM, num)
+					token = (FLOAT, num)
+				else:
+					token = (INT, num)
 			else:
-				token = (ERROR, 'Lexical Error: Unknown Token: ' + value)
+				token = (ERROR, 'Unknown Token: ' + self.input[self.pos])
 		return token									
 
 	def next(self):
 		token = self.peek()
 		if token:
-			# offset input by token lexeme len
-			self.pos += len(token[1])
-			if token[0] == STRING: #offset for both quotes read but not captured
-				self.pos += 2
+			if token[0] != ERROR:
+				# offset input by token lexeme len
+				self.pos += len(token[1])
+				if token[0] == STRING: #offset for both quotes read but not captured
+					self.pos += 2
 		else:
-			token = (ERROR, 'Lexical Error: Unexpected NULL Token') 
+			token = (ERROR, ' Unexpected NULL Token') 
 		return token
 
 
 def parse(lexer):
 	'''
 	Returns AST Nodes 
-		(ASSIGN, (var_id, expr))
-		(CLOSURE, ([<var_id> ...], expr))
+		(ASSIGN, (def_id_id, expr))
+		(CLOSURE, ([<def_id_id> ...], expr))
 		(APPLY expr [<expr> ...])
 	'''
 	ast = []
 	tag, value = lexer.peek()
-	while tag != ERROR and tag  != EOI:
-		if tag == VAR:
-			# get var 
-			var = lexer.next()
+	while tag != ERROR and tag != EOI:
+		if tag == ID:
+			# get def id 
+			def_id = lexer.next()
 			# check next token for equal sign
 			tag, value = lexer.next()
 			if tag == EQUAL:
-				# return var value (id) and expression
-				ast.append((ASSIGN, (var[1], parse_expr(lexer))))
-			else: # standalone var
-				ast.append(var)
-		else:
-			ast.append( parse_expr(lexer))
+				# return def_id value (id) and expression
+				ast.append((ASSIGN, (def_id[1], parse_expr(lexer))))
+			else: # standalone def_id
+				ast.append(def_id)
+		elif tag != COMMENT: # ignore comments
+			ast.append(parse_expr(lexer))
 		tag, value = lexer.peek()
-	
+
 	return ast
 
 
@@ -179,69 +192,74 @@ def parse_expr(lexer):
 	'''
 	tag, value = lexer.next()
 	root = None
-	if tag == VAR or tag == NUM or tag == STRING: # if atom
+	if tag == ID or tag == FLOAT or tag == INT  or tag == STRING: # if atom
 		 # eat token
 		root = (tag, value)
 		# return 
 	elif tag == LAMBDA: # if abstraction
 		bindings = [] #  bound parameter ids
-		# get next, must be either var or dot
+		# get next, must be either def_id or dot
 		tag, value = lexer.next()
-		# get all following var values (ids)
-		while tag == VAR:
+		# get all following def_id values (ids)
+		while tag == ID:
 			bindings.append(value)
 			tag, value = lexer.next()
 		if tag == DOT:
 			root = (CLOSURE, (bindings, parse_expr(lexer)))
 		else:
-			root = (ERROR, 'Syntax Error: Expected ' + DOT + ' at: ' + value)
+			root = (ERROR, 'Expected ' + DOT + ' at: ' + value)
 	elif tag == LPAREN: # if application
 		# apply first expression to all expressions until rparen
 		expr = None 
-		var = parse_expr(lexer)
-		if var[0] != VAR:
-		 	expr = var
+		def_id = parse_expr(lexer)
+		if def_id[0] != ID:
+		 	expr = def_id
 		else:
-		 	expr = var[1]
+		 	expr = def_id[1]
 		args = []
 		# eat lparen
 		tag, value = lexer.peek()
-		while tag != RPAREN and tag != ERROR:
+		while tag != RPAREN and tag != ERROR and tag != EOI:	
 			args.append(parse_expr(lexer))
 			tag, value = lexer.peek()
-		#eat rparen
-		lexer.next()
-		root = (APPLY, (expr, args))
+		if tag == ERROR or tag == EOI:
+			root = ERROR, "Missing Closing Parentheses!" 		
+		else:
+			#eat rparen
+			lexer.next()
+			root = (APPLY, (expr, args))
+	elif tag == COMMENT or tag == ERROR:
+		root = tag, value
 	else:
-		root = (ERROR, 'Syntax Error: Unexpected :'+ value)
+		root = (ERROR, 'Unexpected :'+ value)
 	return root
 
-##################		Evaluation		##########################
 class Closure:
 	'''
 		Closure Container
 	'''
 	def __init__(self, bindings, params, expr):
-		# locally bound variables
+		# locally bound def_idiables
 		self.bindings = {}
-		for var in bindings.keys():
-			self.bindings[var] = bindings[var]
+		for def_id in bindings.keys():
+			self.bindings[def_id] = bindings[def_id]
 
 		# parameters to be substituted at call binding scope
 		self.params = []
-		for var in params:
-			self.params.append(var)		
+		for def_id in params:
+			self.params.append(def_id)		
 		# expression to evaluate at the scope of bindings
 		self.expr = expr
 
 	def __repr__(self):
-		s = 'CLOSURE: ('
+		s = '('
 		for p in self.params:
 			s+= p + ' '
 		s += ')'
+			
 		# s += ')\n\tBINDINGS: '
-		# for var, value in self.bindings.items():
-		# 	s += '\n\t\t' + var + ': ' + str(value) 
+		# for def_id, value in self.bindings.items():
+		# 	s += '\n\t\t' + def_id + ': ' + str(value) 
 		return  s
 	
 
@@ -249,18 +267,22 @@ def evaluate(root, bindings):
 	expr = root # evaluated expression
 	tag, value = root
 	if tag == ASSIGN:
-		# add expr to binding with var key
-		expr = bindings[value[0]] = evaluate(value[1], bindings)
+		# add expr to binding with def_id key
+		if bindings.get(value[0]):
+			print value[0], "Already exists!"	
+			expr = None	
+		else:
+			expr = bindings[value[0]] = evaluate(value[1], bindings)
 	elif tag == CLOSURE:
 		# return a closure object with parent bindings
 		expr =  Closure(bindings, value[0], value[1])
 	elif tag == APPLY:
 		# Evaluate by  binding all closure params with each args
-		var = value[0] # get closure id
+		def_id = value[0] # get closure id
 		args = value[1]   
 		closure = None
 		# if a control structure
-		if var == 'if':
+		if def_id == 'if':
 			# (if c t f)
 			# args = [cond,  true_stmt, false_stmt]
 			if len(args) == 3:
@@ -270,19 +292,19 @@ def evaluate(root, bindings):
 				else:
 					expr = evaluate(args[2], bindings)
 			else:
-				expr = (ERROR, 'Incorrect arguments amount passed to application:', var)
+				expr = (ERROR, 'Incorrect arguments amount passed to application:', def_id)
 		# not a control structure, so must be a closure 
 		else:
 			# if an application, get the closure definition
-			if var[0] == APPLY:
-				closure = evaluate(var, bindings)
+			if def_id[0] == APPLY:
+				closure = evaluate(def_id, bindings)
 			# if not an application, and not user defined, request builtin closure def
-			elif var not in bindings:
+			elif def_id not in bindings:
 				# get builtin closure 
-				closure = evaluate((VAR, var), bindings)
+				closure = evaluate((ID, def_id), bindings)
 			# get the closure to be called
 			else:
-				closure = bindings[var]
+				closure = bindings[def_id]
 			# if closure was found and not a control structure
 			if isinstance(closure, Closure):
 				count= len(args)
@@ -296,41 +318,42 @@ def evaluate(root, bindings):
 					local_bindings[bind] = closure.bindings[bind]	
 				params = closure.params
 				if len(params) != count:
-					expr = (ERROR, 'Incorrect argument amount passed to application:', var)
+					expr = (ERROR, 'Incorrect argument amount passed to application:', def_id)
 				else:
 					# evaluate each argument and bind it to the local level 
 					for i in range(0, count):
 						local_bindings[params[i]] = evaluate(args[i], bindings) 			
 				expr = evaluate(closure.expr, local_bindings)
 				if expr == None:
-					expr = (ERROR, str(var) + ' is not bound to this closure')
+					expr = (ERROR, str(def_id) + ' is not bound to this closure')
 			# empty closure, could not find
 			else:
-				expr = (ERROR, str(var) + ' is not bound within this application: ')
-	elif tag == VAR:
+				expr = (ERROR, str(def_id) + ' is not bound within this application: ')
+	elif tag == ID:
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
 			expr = evaluate_builtin(root, bindings)
-			# if var value did not match any closures, then not defined yet
-	elif tag == NUM:
+			# if def_id value did not match any closures, then not defined yet
+	elif tag == FLOAT:
 		expr = float(value)
+	elif tag == INT:
+		expr = int(value)
 	elif tag == STRING:
 		expr = str(value)
 	elif tag == BUILTIN:
 		expr = evaluate_builtin(value, bindings)
 		if expr == None:
 			expr = (ERROR, value + ' is not bound within this context.')
-	else:
-		print 'ERROR', expr
+	#else error
 	return expr
  
 
 def evaluate_builtin(root, bindings):
 
 	expr = None
-	#if var then requesting closure defition
-	if root[0] == VAR:
+	#if def_id then requesting closure definition
+	if root[0] == ID:
 		tag, value = root
 		closure_tag = (BUILTIN, value)
 		# binary ops
@@ -343,21 +366,56 @@ def evaluate_builtin(root, bindings):
 			expr = True
 		elif value ==  'False':
 			expr = False	
-	# else ( var, args) call to closure
+	# else ( def_id, args) call to built_in closure
 	else: 
+		op_type = FLOAT
 		left = bindings['_x']
+		right = None		
 		if bindings.get('_y'):
 			right = bindings['_y']
-			if isinstance(left, str):
-		 		right = str(right)
+			
 		if root == 'add':
+			if isinstance(left, str):
+				right = str(right)
 			expr = left + right 
 		elif root == 'sub':
-			expr = left - right 
+			# if both are strings, get the intersection of the two
+			if isinstance(left, str):
+				if right == None:
+					expr = left
+				else:
+					expr = left.replace( str(right), '')	
+			else:
+				if isinstance(right, str):
+					expr = "Expected Integer\Float in (sub <number> <number>)"						 			
+				else:
+					expr = left - right 
 		elif root == 'mul':
-			expr = left * right 
+			if isinstance(left, str):	
+			# expect integer value (number of times to repeat!
+				if isinstance(right, int):
+					expr = ""
+				 	while right > 0:
+						expr += left
+						right -= 1
+				else:
+					expr = "Expected Integer in (mul string <int>)"						 			
+			else:
+				expr = left * right
 		elif root == 'div':
-			expr = left / right 
+			if isinstance(left, str):	
+			# get the intersection!
+				if right == None:
+					expr = left
+				else:
+					right = str(right)
+					expr = ""
+				 	for sym in left:
+						if not sym in right:
+						  expr += sym
+			else:
+				expr = left / right	
+
 		elif root == 'not':
 			expr = not left 
 		elif root == 'and':
@@ -375,5 +433,4 @@ def evaluate_builtin(root, bindings):
 
 # Run main after all defintions 
 if __name__ == '__main__':
-	import sys
 	main(sys.argv[1:])

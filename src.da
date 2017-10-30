@@ -15,8 +15,8 @@ e = (b 3 5)
 f = (e 30)
 (print f)
 
-f = ((b 3 5) 20)
-(print f)
+g = ((b 3 5) 20)
+(print g)
 t = \ x y. 
 		(if x
 			( t (sub x 1 ) (print (add y 1)))

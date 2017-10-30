@@ -1,0 +1,13 @@
+SheepDa! The Soft Functional Scripting Language 
+github.com/138paulmiller
+
+Usage: ./sheepda [<file>|-s|-h]
+	<file>	Entry Point to program
+	-s	Display the syntax
+	-h	Display this menu
+
+REPL Commands:
+	quit	Quit interpreter
+	help	Display this menu
+	unbind	Remove all bindings
+
