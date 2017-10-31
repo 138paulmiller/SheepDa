@@ -380,10 +380,9 @@ def evaluate_builtin(root, bindings):
 			expr = False	
 	# else ( def_id, args) call to built_in closure
 	else: 
-		op_type = FLOAT
 		left = bindings['_x']
 		right = None		
-		if bindings.get('_y'):
+		if bindings.get('_y') != None:
 			right = bindings['_y']
 		if root == '+':
 			if isinstance(left, str):
