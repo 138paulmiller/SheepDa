@@ -25,3 +25,5 @@ x = \ x.
 ;*tiplication works as a star operator
 (print ((x *) "Hello World" ""))
 (print ((x *) "Hello World" 3))
+
+

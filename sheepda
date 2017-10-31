@@ -46,7 +46,7 @@ def main(args):
 			print HELP
 		interpret(file(args[0]).read(), bindings)
 	else: # repl
-		source = raw_input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help!\n\n@>')			
+		source = raw_input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help\n\n@>')			
 		while source != 'quit':
 			if source == 'help':
 				print HELP
@@ -103,7 +103,7 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
-			elif sym  in ['*','/','+','-']:
+			elif sym  in ['*','/','+','-', '<', '>']:
 				token = (KEYWORD, sym)
 			elif sym == '\"': 
 				string = ""
@@ -128,7 +128,7 @@ class Lexer:
 				while i <  self.len and self.input[i].isalnum(): 
 					def_id += self.input[i]
 					i+=1
-				if def_id in ['and','or','not', 'print']:
+				if def_id in ['eq', 'and','or','not', 'print']:
 					token = (KEYWORD, def_id)				
 				else:
 					token = (ID, def_id)
@@ -164,7 +164,6 @@ class Lexer:
 		else:
 			token = (ERROR, ' Unexpected NULL Token') 
 		return token
-
 
 def parse(lexer):
 	'''
@@ -293,8 +292,9 @@ def evaluate(root, bindings):
 			# (if c t f)
 			# args = [cond,  true_stmt, false_stmt]
 			if len(args) == 3:
-				# if condition is not zero, evaluate 
-				if evaluate(args[0], bindings) != 0:
+				# if condition is not zero, evaluate
+				cond = evaluate(args[0], bindings) 
+				if cond != 0 and cond != None:
 					expr = evaluate(args[1], bindings)
 				else:
 					expr = evaluate(args[2], bindings)
@@ -365,7 +365,7 @@ def evaluate_builtin(root, bindings):
 		tag, value = root
 		closure_tag = (BUILTIN, value)
 		# binary ops
-		if value in ['+','-','*','/', 'and', 'or']: # binary ops
+		if value in ['+','-','*','/', '<', '>', 'eq', 'and', 'or']: # binary ops
 			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
 		elif value in ['not','print']: # unary ops
 			expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
@@ -423,7 +423,13 @@ def evaluate_builtin(root, bindings):
 				expr = left / right	
 
 		elif root == 'not':
-			expr = not left 
+			expr = not left 		
+		elif root == '<':
+			expr = left < right
+		elif root == '>':
+			expr = left > right
+		elif root == 'eq':
+			expr = left is right
 		elif root == 'and':
 			expr = left and right 
 		elif root == 'or':
