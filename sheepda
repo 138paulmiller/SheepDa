@@ -103,7 +103,7 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
-			elif sym  in ['*','/','+','-', '<', '>']:
+			elif sym  in ['*','/','+', '<', '>']:
 				token = (KEYWORD, sym)
 			elif sym == '\"': 
 				string = ""
@@ -132,23 +132,27 @@ class Lexer:
 					token = (KEYWORD, def_id)				
 				else:
 					token = (ID, def_id)
-						
-			elif sym.isdigit(): 
-				num = sym
-				i = self.pos+1
-				while i <  self.len and self.input[i].isalnum(): 
-					num += self.input[i]
-					i+=1
-				if i < len(self.input) and self.input[i] == '.':
-					num += self.input[i]
-					i+=1					
-					while i < self.len and \
-						self.input[i].isalnum(): 
+				
+			elif sym.isdigit() or sym == '-':
+				# negative number
+				if sym.isdigit() or (sym == '-' and self.pos+1 < self.len and self.input[self.pos+1].isdigit()):
+					num = sym
+					i = self.pos+1
+					while i <  self.len and self.input[i].isalnum(): 
 						num += self.input[i]
 						i+=1
-					token = (FLOAT, num)
-				else:
-					token = (INT, num)
+					if i < len(self.input) and self.input[i] == '.':
+						num += self.input[i]
+						i+=1					
+						while i < self.len and \
+							self.input[i].isalnum(): 
+							num += self.input[i]
+							i+=1
+						token = (FLOAT, num)
+					else:
+						token = (INT, num)
+				else: # subtraction operator 	
+					token = (KEYWORD, sym)
 			else:
 				token = (ERROR, 'Unknown Token: ' + self.input[self.pos])
 		return token									
