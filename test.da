@@ -6,22 +6,22 @@ x = \ x.
 	\ a b .
 		(x a b )
 
-; Adding strings to other strings and numbers
-(print ((x add) "hello" " world"))
-(print ((x add) "hello" 9.88))
-(print ((x add) "hello" 9))
+; +ing strings to other strings and numbers
+(print ((x +) "hello" " world"))
+(print ((x +) "hello" 9.88))
+(print ((x +) "hello" 9))
 
-; Subtracting strings and numbers from strings 
-; Works by removing the right substring from the left string
-(print ((x sub) "hello world!!!" " world"))
-(print ((x sub) "hello100.98" 100.98))
-(print ((x sub) "hello100.98" 100))
-;(print ((x sub) 45 "4")) 	;Will not work! the left expression determines the operation type for artithmetic 
+; -tracting strings and numbers from strings 
+; Works by removing the right -string from the left string
+(print ((x -) "hello world!!!" " world"))
+(print ((x -) "hello100.98" 100.98))
+(print ((x -) "hello100.98" 100))
+;(print ((x -) 45 "4")) 	;Will not work! the left expression determines the operation type for artithmetic 
 
-;Division works similar as an intersection of left and right 
-(print ((x div) "Hello World" "el"))
-(print ((x sub) "Hello World" ""))
+;/ision works similar as an intersection of left and right 
+(print ((x /) "Hello World" "el"))
+(print ((x -) "Hello World" ""))
 
-;Multiplication works as a star operator
-(print ((x mul) "Hello World" ""))
-(print ((x mul) "Hello World" 3))
+;*tiplication works as a star operator
+(print ((x *) "Hello World" ""))
+(print ((x *) "Hello World" 3))

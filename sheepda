@@ -37,6 +37,7 @@ INT 	= 'INT'
 COMMENT = 'COMMENT'
 EOI 	= 'EOI'
 ERROR 	= 'ERROR'
+KEYWORD	= 'KEYWORD' 
 
 def main(args):
 	bindings = {} 
@@ -102,6 +103,8 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
+			elif sym  in ['*','/','+','-']:
+				token = (KEYWORD, sym)
 			elif sym == '\"': 
 				string = ""
 				i = self.pos+1
@@ -125,7 +128,11 @@ class Lexer:
 				while i <  self.len and self.input[i].isalnum(): 
 					def_id += self.input[i]
 					i+=1
-				token = (ID, def_id)
+				if def_id in ['and','or','not', 'print']:
+					token = (KEYWORD, def_id)				
+				else:
+					token = (ID, def_id)
+						
 			elif sym.isdigit(): 
 				num = sym
 				i = self.pos+1
@@ -164,7 +171,7 @@ def parse(lexer):
 	Returns AST Nodes 
 		(ASSIGN, (def_id_id, expr))
 		(CLOSURE, ([<def_id_id> ...], expr))
-		(APPLY expr [<expr> ...])
+		(APPLY [ID KEYWORD] [<expr> ...])
 	'''
 	ast = []
 	tag, value = lexer.peek()
@@ -192,7 +199,7 @@ def parse_expr(lexer):
 	'''
 	tag, value = lexer.next()
 	root = None
-	if tag == ID or tag == FLOAT or tag == INT  or tag == STRING: # if atom
+	if tag in [KEYWORD, ID, FLOAT, INT, STRING]: # if ID or Float or ...
 		 # eat token
 		root = (tag, value)
 		# return 
@@ -212,7 +219,7 @@ def parse_expr(lexer):
 		# apply first expression to all expressions until rparen
 		expr = None 
 		def_id = parse_expr(lexer)
-		if def_id[0] != ID:
+		if def_id[0] != ID and def_id[0] != KEYWORD:
 		 	expr = def_id
 		else:
 		 	expr = def_id[1]
@@ -301,7 +308,7 @@ def evaluate(root, bindings):
 			# if not an application, and not user defined, request builtin closure def
 			elif def_id not in bindings:
 				# get builtin closure 
-				closure = evaluate((ID, def_id), bindings)
+				closure = evaluate((KEYWORD, def_id), bindings)
 			# get the closure to be called
 			else:
 				closure = bindings[def_id]
@@ -333,8 +340,9 @@ def evaluate(root, bindings):
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
-			expr = evaluate_builtin(root, bindings)
-			# if def_id value did not match any closures, then not defined yet
+			expr = tag + " not defined!"
+	elif tag == KEYWORD:
+		expr = evaluate_builtin(root, bindings)
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
@@ -353,14 +361,13 @@ def evaluate_builtin(root, bindings):
 
 	expr = None
 	#if def_id then requesting closure definition
-	if root[0] == ID:
+	if root[0] == KEYWORD:
 		tag, value = root
 		closure_tag = (BUILTIN, value)
 		# binary ops
-		if value == 'add' or  value == 'sub' or value == 'mul' \
-			or value == 'div' or value == 'and' or value == 'or':
+		if value in ['+','-','*','/', 'and', 'or']: # binary ops
 			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
-		elif value == 'not' or value == 'print':
+		elif value in ['not','print']: # unary ops
 			expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
 		elif value == 'True':
 			expr = True
@@ -373,12 +380,11 @@ def evaluate_builtin(root, bindings):
 		right = None		
 		if bindings.get('_y'):
 			right = bindings['_y']
-			
-		if root == 'add':
+		if root == '+':
 			if isinstance(left, str):
 				right = str(right)
 			expr = left + right 
-		elif root == 'sub':
+		elif root == '-':
 			# if both are strings, get the intersection of the two
 			if isinstance(left, str):
 				if right == None:
@@ -390,7 +396,7 @@ def evaluate_builtin(root, bindings):
 					expr = "Expected Integer\Float in (sub <number> <number>)"						 			
 				else:
 					expr = left - right 
-		elif root == 'mul':
+		elif root == '*':
 			if isinstance(left, str):	
 			# expect integer value (number of times to repeat!
 				if isinstance(right, int):
@@ -402,7 +408,7 @@ def evaluate_builtin(root, bindings):
 					expr = "Expected Integer in (mul string <int>)"						 			
 			else:
 				expr = left * right
-		elif root == 'div':
+		elif root == '/':
 			if isinstance(left, str):	
 			# get the intersection!
 				if right == None:
