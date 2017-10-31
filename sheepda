@@ -324,13 +324,14 @@ def evaluate(root, bindings):
 				for bind in closure.bindings.keys():
 					local_bindings[bind] = closure.bindings[bind]	
 				params = closure.params
+			
 				if len(params) != count:
 					expr = (ERROR, 'Incorrect argument amount passed to application:', def_id)
 				else:
 					# evaluate each argument and bind it to the local level 
 					for i in range(0, count):
 						local_bindings[params[i]] = evaluate(args[i], bindings) 			
-				expr = evaluate(closure.expr, local_bindings)
+					expr = evaluate(closure.expr, local_bindings)
 				if expr == None:
 					expr = (ERROR, str(def_id) + ' is not bound to this closure')
 			# empty closure, could not find

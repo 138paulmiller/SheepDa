@@ -2,6 +2,5 @@
 fac = \x . 
 		(if x 
 			(* (fac (- x 1)) x)
-			 1
-		)
+			 1)
 (print (fac 100)) 
