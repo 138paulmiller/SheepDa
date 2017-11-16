@@ -1,0 +1,11 @@
+f = \a . (if (> a 1) 
+			(+(f (- a 1)) 
+			(f (- a 2)) ) 1)
+fib = \ a b . (if 
+				(< a b) 
+				(and (print (f a)	)
+					 (fib (+ a 1) b)
+				) "")
+(fib 0 20) 
+
+

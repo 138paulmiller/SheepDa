@@ -3,6 +3,7 @@
  
 git clone https://github.com/138paulmiller/SheepDa.git
 cd SheepDa
+chmod +x sheepda
 echo export SHEEPDA=$(pwd) >> ~/.bashrc
 echo export 'PATH=$PATH:$SHEEPDA' >> ~/.bashrc
  

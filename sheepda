@@ -39,6 +39,7 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
+#------------------------Repl--------------------------#
 def main(args):
 	bindings = {} 
 	if len(args) > 0: 
@@ -71,7 +72,7 @@ def interpret(source, bindings):
 		exprs.append(expr)
 	return exprs
 
-		
+#------------------------Lexer --------------------------#	
 class Lexer:
 	'''
 	 Returns tokens (tag, value)
@@ -168,7 +169,7 @@ class Lexer:
 		else:
 			token = (ERROR, ' Unexpected NULL Token') 
 		return token
-
+#------------------------Parser --------------------------#
 def parse(lexer):
 	'''
 	Returns AST Nodes 
@@ -194,7 +195,6 @@ def parse(lexer):
 		tag, value = lexer.peek()
 
 	return ast
-
 
 def parse_expr(lexer):
 	'''
@@ -244,6 +244,7 @@ def parse_expr(lexer):
 		root = (ERROR, 'Unexpected :'+ value)
 	return root
 
+#------------------------Closure --------------------------#
 class Closure:
 	'''
 		Closure Container
@@ -272,7 +273,154 @@ class Closure:
 		# 	s += '\n\t\t' + def_id + ': ' + str(value) 
 		return  s
 	
+#------------------------Evaluate Builtins--------------------------#
+def eval_add(bindings):
+	left = bindings['_x']
+	right = bindings['_y']
+	try:			
+		if isinstance(left, str):
+			right = str(right)
+		elif isinstance(right, str):
+			left = str(left)
+		expr = left + right
+	except:
+		expr = "Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)"						 			
+	return expr
 
+def eval_sub(bindings):
+	left = bindings['_x']
+	right = bindings['_y']
+	try:	
+		# if both are strings, get the intersection of the two
+		if isinstance(left, str):
+			if right == None:
+				expr = left
+			else:
+				expr = left.replace( str(right), '')	
+		else:
+			expr = left - right 		
+	except:
+		expr = "Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)"						 			
+	return expr
+
+def eval_mul(bindings):
+	left = bindings['_x']
+	right = bindings['_y']
+	try:			
+		if isinstance(left, str):	
+			expr = ""
+		# expect integer value (number of times to repeat!
+			if isinstance(right, int):
+			 	while right > 0:
+					expr += left
+					right -= 1
+			elif isinstance(right, str):	
+				#return merged string
+				r = len(right)
+				for i in range(0,len(left)):
+					expr += left[i]
+					if i < r:
+						expr += right[i]
+		else:
+			expr = left * right
+	except:			
+		expr = "Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)"
+	return expr						
+
+def eval_div(bindings):
+	left = bindings['_x']
+	right = bindings['_y']
+	try:
+		if isinstance(left, str):	
+		# get the intersection!
+			if right == None:
+				expr = left
+			else:
+				right = str(right)
+				expr = ""
+			 	for sym in left:
+					if not sym in right:
+					  expr += sym
+		else:
+			expr = left / right	
+	except:
+		expr = "Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)"
+	return expr							
+
+def eval_not(bindings):
+	return not bindings['_x'] 		
+
+def eval_lt(bindings):
+	return bindings['_x'] < bindings['_y']
+
+def eval_gt(bindings):
+	return  bindings['_x'] > bindings['_y'] 
+
+def eval_eq(bindings):
+	return bindings['_x'] is bindings['_y']
+
+def eval_and(bindings):
+	return bindings['_x'] and bindings['_y']
+
+def eval_or(bindings):
+	left = bindings['_x']
+	# lazy eval
+	if left:			
+		expr = left or bindings['_y']
+	else:
+		expr = left
+	return expr
+
+def eval_print(bindings):
+	expr = bindings['_x']
+	print expr
+	return expr
+
+def eval_print(bindings):
+	expr = bindings['_x']
+	print expr
+	return expr
+
+'''
+	Builtin Evaluate Action Table	
+	symbol : (function(bindings), paramcount)
+'''
+builtins = {
+	'+'		:(eval_add, 2),
+	'-'		:(eval_sub,2),
+	'*'		:(eval_mul, 2),
+	'/'		:(eval_div, 2),
+	'<'		:(eval_lt, 2),
+	'>'		:(eval_gt,2),
+	'eq'	:(eval_eq,2),
+	'and'	:(eval_and,2),
+	'or'	:(eval_or,2),
+	'not'	:(eval_not,1),
+	'print'	:(eval_print,1 )
+}
+def eval_builtin(root, bindings):
+	expr = None
+	#if def_id then requesting closure definition
+	if root[0] == KEYWORD:
+		tag, value = root
+		closure_tag = (BUILTIN, value)
+		if value == 'True':
+			expr = True
+		elif value ==  'False':
+			expr = False	
+		elif value in builtins:
+			arg_count = builtins[value][1]
+			if arg_count == 1:
+				expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
+			elif arg_count == 2:
+				expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
+	# else ( def_id, args) call to built_in closure
+	else: 
+		if root:
+			expr= builtins[root][0](bindings)
+	return expr
+
+#------------------------Evaluate --------------------------#
 def evaluate(root, bindings):
 	expr = root # evaluated expression
 	tag, value = root
@@ -317,6 +465,7 @@ def evaluate(root, bindings):
 			else:
 				closure = bindings[def_id]
 			# if closure was found and not a control structure
+
 			if isinstance(closure, Closure):
 				count= len(args)
 				params = None
@@ -340,112 +489,27 @@ def evaluate(root, bindings):
 					expr = (ERROR, str(def_id) + ' is not bound to this closure')
 			# empty closure, could not find
 			else:
-				expr = (ERROR, str(def_id) + ' is not bound within this application: ')
+				expr = (ERROR, closure + ' is not bound within this application: ')
 	elif tag == ID:
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
 			expr = tag + " not defined!"
-	elif tag == KEYWORD:
-		expr = evaluate_builtin(root, bindings)
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
 		expr = int(value)
 	elif tag == STRING:
 		expr = str(value)
-	elif tag == BUILTIN:
-		expr = evaluate_builtin(value, bindings)
+	elif tag == KEYWORD: #if keyword, get builtin definition
+		expr = eval_builtin(root, bindings)
+	elif tag == BUILTIN: # if builtin, evaluate
+		expr = eval_builtin(value, bindings)
 		if expr == None:
 			expr = (ERROR, value + ' is not bound within this context.')
-	#else error
+	#else error		
 	return expr
  
-
-def evaluate_builtin(root, bindings):
-
-	expr = None
-	#if def_id then requesting closure definition
-	if root[0] == KEYWORD:
-		tag, value = root
-		closure_tag = (BUILTIN, value)
-		# binary ops
-		if value in ['+','-','*','/', '<', '>', 'eq', 'and', 'or']: # binary ops
-			expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
-		elif value in ['not','print']: # unary ops
-			expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
-		elif value == 'True':
-			expr = True
-		elif value ==  'False':
-			expr = False	
-	# else ( def_id, args) call to built_in closure
-	else: 
-		left = bindings['_x']
-		right = None		
-		if bindings.get('_y') != None:
-			right = bindings['_y']
-		if root == '+':
-			if isinstance(left, str):
-				right = str(right)
-			expr = left + right 
-		elif root == '-':
-			# if both are strings, get the intersection of the two
-			if isinstance(left, str):
-				if right == None:
-					expr = left
-				else:
-					expr = left.replace( str(right), '')	
-			else:
-				if isinstance(right, str):
-					expr = "Expected Integer\Float in (sub <number> <number>)"						 			
-				else:
-					expr = left - right 
-		elif root == '*':
-			if isinstance(left, str):	
-			# expect integer value (number of times to repeat!
-				if isinstance(right, int):
-					expr = ""
-				 	while right > 0:
-						expr += left
-						right -= 1
-				else:
-					expr = "Expected Integer in (mul string <int>)"						 			
-			else:
-				expr = left * right
-		elif root == '/':
-			if isinstance(left, str):	
-			# get the intersection!
-				if right == None:
-					expr = left
-				else:
-					right = str(right)
-					expr = ""
-				 	for sym in left:
-						if not sym in right:
-						  expr += sym
-			else:
-				expr = left / right	
-
-		elif root == 'not':
-			expr = not left 		
-		elif root == '<':
-			expr = left < right
-		elif root == '>':
-			expr = left > right
-		elif root == 'eq':
-			expr = left is right
-		elif root == 'and':
-			expr = left and right 
-		elif root == 'or':
-			left = bindings['_x']
-			if left:			
-				expr = left or right
-			else:
-				expr = left
-		elif root == 'print':
-			expr = bindings['_x']
-			print expr 
-	return expr
 
 # Run main after all defintions 
 if __name__ == '__main__':
