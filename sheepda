@@ -39,6 +39,9 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
+keywords = ['*','/','+', '<', '>', 'eq', 'and','or','not', 'print', 'read']
+controls = ['if']
+
 #------------------------Repl--------------------------#
 def main(args):
 	bindings = {} 
@@ -104,7 +107,7 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
-			elif sym  in ['*','/','+', '<', '>']:
+			elif sym  in keywords:
 				token = (KEYWORD, sym)
 			elif sym == '\"': 
 				string = ""
@@ -129,7 +132,7 @@ class Lexer:
 				while i <  self.len and self.input[i].isalnum(): 
 					def_id += self.input[i]
 					i+=1
-				if def_id in ['eq', 'and','or','not', 'print']:
+				if def_id in keywords or def_id in controls:
 					token = (KEYWORD, def_id)				
 				else:
 					token = (ID, def_id)
@@ -284,7 +287,7 @@ def eval_add(bindings):
 			left = str(left)
 		expr = left + right
 	except:
-		expr = "Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)"						 			
+		expr = (ERROR, "Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)")						 			
 	return expr
 
 def eval_sub(bindings):
@@ -300,7 +303,7 @@ def eval_sub(bindings):
 		else:
 			expr = left - right 		
 	except:
-		expr = "Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)"						 			
+		expr = (ERROR, "Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)")						 			
 	return expr
 
 def eval_mul(bindings):
@@ -324,7 +327,7 @@ def eval_mul(bindings):
 		else:
 			expr = left * right
 	except:			
-		expr = "Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)"
+		expr = (ERROR, "Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)")
 	return expr						
 
 def eval_div(bindings):
@@ -344,7 +347,7 @@ def eval_div(bindings):
 		else:
 			expr = left / right	
 	except:
-		expr = "Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)"
+		expr = (ERROR, "Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)")
 	return expr							
 
 def eval_not(bindings):
@@ -381,11 +384,27 @@ def eval_print(bindings):
 	print expr
 	return expr
 
+
+def eval_if(bindings):
+	cond = evaluate(bindings['_x'], bindings)	
+
+	if cond != 0  :
+		# if error
+		if isinstance(cond, tuple) and len(cond) > 1 and cond[0] is ERROR:
+			expr = cond	
+		else:
+			# evaluate true expr
+			expr = evaluate(bindings['_y'], bindings)	
+	else:
+		# evaluate false expr
+		expr = evaluate(bindings['_z'], bindings)	
+	return expr
 '''
 	Builtin Evaluate Action Table	
 	symbol : (function(bindings), paramcount)
 '''
 builtins = {
+	'if'	:(eval_if, 3),
 	'+'		:(eval_add, 2),
 	'-'		:(eval_sub,2),
 	'*'		:(eval_mul, 2),
@@ -414,6 +433,8 @@ def eval_builtin(root, bindings):
 				expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
 			elif arg_count == 2:
 				expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
+			elif arg_count == 3:
+				expr = bindings[value] = Closure(bindings,  ['_x', '_y', '_z'], closure_tag)
 	# else ( def_id, args) call to built_in closure
 	else: 
 		if root:
@@ -439,6 +460,7 @@ def evaluate(root, bindings):
 		def_id = value[0] # get closure id
 		args = value[1]   
 		closure = None
+		'''
 		# if a control structure
 		if def_id == 'if':
 			# (if c t f)
@@ -454,47 +476,58 @@ def evaluate(root, bindings):
 				expr = (ERROR, 'Incorrect arguments amount passed to application:', def_id)
 		# not a control structure, so must be a closure 
 		else:
-			# if an application, get the closure definition
-			if def_id[0] == APPLY:
-				closure = evaluate(def_id, bindings)
-			# if not an application, and not user defined, request builtin closure def
-			elif def_id not in bindings:
-				# get builtin closure 
-				closure = evaluate((KEYWORD, def_id), bindings)
-			# get the closure to be called
-			else:
-				closure = bindings[def_id]
-			# if closure was found and not a control structure
+		'''
+		# if an application, get the closure definition
+		if def_id[0] == APPLY:
+			closure = evaluate(def_id, bindings)
+		# if not an application, and not user defined, request builtin closure def
+		elif def_id not in bindings:
+			# get builtin closure 
+			closure = evaluate((KEYWORD, def_id), bindings)
+		# get the closure to be called
+		else:
+			closure = bindings[def_id]
+		# if closure was found and not a control structure
 
-			if isinstance(closure, Closure):
-				count= len(args)
-				params = None
-				local_bindings	= {}
-				# bind all closure and calling bindings locally
-				for bind in bindings:
-					local_bindings[bind] = bindings[bind]
-				# update closure bindings last, will add closure precedence over calling
-				for bind in closure.bindings.keys():
-					local_bindings[bind] = closure.bindings[bind]	
-				params = closure.params
-			
-				if len(params) != count:
-					expr = (ERROR, 'Incorrect argument amount passed to application:', def_id)
-				else:
-					# evaluate each argument and bind it to the local level 
-					for i in range(0, count):
-						local_bindings[params[i]] = evaluate(args[i], bindings) 			
-					expr = evaluate(closure.expr, local_bindings)
-				if expr == None:
-					expr = (ERROR, str(def_id) + ' is not bound to this closure')
-			# empty closure, could not find
+		if isinstance(closure, Closure):
+			count= len(args)
+			params = None
+			local_bindings	= {}
+			# bind all closure and calling bindings locally
+			for bind in bindings:
+				local_bindings[bind] = bindings[bind]
+			# update closure bindings last, will add closure precedence over calling
+			for bind in closure.bindings.keys():
+				local_bindings[bind] = closure.bindings[bind]	
+			params = closure.params
+		
+			if len(params) != count:
+				expr = (ERROR, 'Incorrect argument amount passed to application:', def_id)
+			elif def_id in controls:
+				# if a control structure
+				for i in range(0, count):
+					# do not evaluate args in control structure
+					local_bindings[params[i]] = args[i] 			
+				expr = eval_builtin(def_id,  local_bindings)
 			else:
+				# evaluate each argument and bind it to the local level 
+				for i in range(0, count):
+					local_bindings[params[i]] = evaluate(args[i], bindings) 			
+				expr = evaluate(closure.expr, local_bindings)
+			
+			if expr == None:
+				expr = (ERROR, str(def_id) + ' is not bound to this closure')
+		# empty closure, could not find
+		else:
+			if closure:
 				expr = (ERROR, closure + ' is not bound within this application: ')
+			else:
+				expr = (ERROR, 'Application is not defined: ')
 	elif tag == ID:
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
-			expr = tag + " not defined!"
+			expr = (ERROR, tag + " not defined!")
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
