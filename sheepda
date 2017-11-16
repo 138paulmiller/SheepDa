@@ -387,8 +387,7 @@ def eval_print(bindings):
 
 def eval_if(bindings):
 	cond = evaluate(bindings['_x'], bindings)	
-
-	if cond != 0  :
+	if cond != None and (cond is 'True' or cond != 0)  :
 		# if error
 		if isinstance(cond, tuple) and len(cond) > 1 and cond[0] is ERROR:
 			expr = cond	
@@ -437,8 +436,7 @@ def eval_builtin(root, bindings):
 				expr = bindings[value] = Closure(bindings,  ['_x', '_y', '_z'], closure_tag)
 	# else ( def_id, args) call to built_in closure
 	else: 
-		if root:
-			expr= builtins[root][0](bindings)
+		expr= builtins[root][0](bindings)
 	return expr
 
 #------------------------Evaluate --------------------------#
@@ -460,23 +458,6 @@ def evaluate(root, bindings):
 		def_id = value[0] # get closure id
 		args = value[1]   
 		closure = None
-		'''
-		# if a control structure
-		if def_id == 'if':
-			# (if c t f)
-			# args = [cond,  true_stmt, false_stmt]
-			if len(args) == 3:
-				# if condition is not zero, evaluate
-				cond = evaluate(args[0], bindings) 
-				if cond != 0 and cond != None:
-					expr = evaluate(args[1], bindings)
-				else:
-					expr = evaluate(args[2], bindings)
-			else:
-				expr = (ERROR, 'Incorrect arguments amount passed to application:', def_id)
-		# not a control structure, so must be a closure 
-		else:
-		'''
 		# if an application, get the closure definition
 		if def_id[0] == APPLY:
 			closure = evaluate(def_id, bindings)
@@ -487,29 +468,28 @@ def evaluate(root, bindings):
 		# get the closure to be called
 		else:
 			closure = bindings[def_id]
-		# if closure was found and not a control structure
-
+		# if closure was found 
 		if isinstance(closure, Closure):
 			count= len(args)
 			params = None
-			local_bindings	= {}
-			# bind all closure and calling bindings locally
-			for bind in bindings:
-				local_bindings[bind] = bindings[bind]
-			# update closure bindings last, will add closure precedence over calling
-			for bind in closure.bindings.keys():
-				local_bindings[bind] = closure.bindings[bind]	
 			params = closure.params
-		
 			if len(params) != count:
 				expr = (ERROR, 'Incorrect argument amount passed to application:', def_id)
 			elif def_id in controls:
-				# if a control structure
+				# if a control structure, add arguments to bindings				
 				for i in range(0, count):
 					# do not evaluate args in control structure
-					local_bindings[params[i]] = args[i] 			
-				expr = eval_builtin(def_id,  local_bindings)
+					bindings[params[i]] = args[i] 	
+				expr = eval_builtin(def_id,  bindings)
 			else:
+				# if a application closure
+				local_bindings	= {}
+				# bind all arguments to closures local bindings
+				for bind in bindings:
+					local_bindings[bind] = bindings[bind]
+				# update closure bindings last, will add closure precedence over calling
+				for bind in closure.bindings.keys():
+					local_bindings[bind] = closure.bindings[bind]	
 				# evaluate each argument and bind it to the local level 
 				for i in range(0, count):
 					local_bindings[params[i]] = evaluate(args[i], bindings) 			
