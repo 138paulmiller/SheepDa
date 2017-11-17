@@ -40,7 +40,7 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
-keywords = ['*','/','+', '<', '>', 'eq', 'and','or','not', 'print', 'read']
+keywords = ['*','/','+', '<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false']
 controls = ['if']
 
 #------------------------Repl--------------------------#
@@ -62,8 +62,9 @@ def main(args):
 				# delete all user defined bindings
 				bindings.clear() 
 			else:
-				for expr in interpret(source, bindings):
-					print expr
+				exprs = interpret(source, bindings)
+				#for expr in exprs:
+				#	print expr
 			source = raw_input('@>')			
 		print 'Goodbye' 
 
@@ -355,19 +356,34 @@ def eval_div(bindings):
 	return expr							
 
 def eval_not(bindings):
-	return not bindings['_x'] 		
+	if not bindings['_x']:
+		return  'true'
+	else:
+		return  'false'	
 
 def eval_lt(bindings):
-	return bindings['_x'] < bindings['_y']
+	if bindings['_x'] < bindings['_y']:
+		return  'true'
+	else:
+		return  'false'
 
 def eval_gt(bindings):
-	return  bindings['_x'] > bindings['_y'] 
+	if bindings['_x'] > bindings['_y']:
+		return  'true'
+	else:
+		return  'false'
 
 def eval_eq(bindings):
-	return bindings['_x'] is bindings['_y']
-
+	if bindings['_x'] is bindings['_y']:
+		return  'true'
+	else:
+		return  'false'
+	
 def eval_and(bindings):
-	return bindings['_x'] and bindings['_y']
+	if bindings['_x'] and bindings['_y']:
+		return  'true'
+	else:
+		return  'false'
 
 def eval_or(bindings):
 	left = bindings['_x']
@@ -376,6 +392,10 @@ def eval_or(bindings):
 		expr = left or bindings['_y']
 	else:
 		expr = left
+	if expr:
+		expr = 'true'
+	else:
+		expr = 'false'
 	return expr
 
 def eval_print(bindings):
@@ -385,13 +405,17 @@ def eval_print(bindings):
 
 def eval_print(bindings):
 	expr = bindings['_x']
+	if expr == True:
+		expr = 'true'
+	elif expr == False:
+		expr = 'false'	
 	print expr
 	return expr
 
 
 def eval_if(bindings):
 	cond = evaluate(bindings['_x'], bindings)	
-	if cond != None and (cond is 'True' or cond != 0)  :
+	if cond != None and (cond is 'true' or cond != 0) :
 		# if error
 		if isinstance(cond, tuple) and len(cond) > 1 and cond[0] is ERROR:
 			expr = cond	
@@ -426,9 +450,9 @@ def eval_builtin(root, bindings):
 	if root[0] == KEYWORD:
 		tag, value = root
 		closure_tag = (BUILTIN, value)
-		if value == 'True':
+		if value == 'true':
 			expr = True
-		elif value ==  'False':
+		elif value ==  'false':
 			expr = False	
 		elif value in builtins:
 			arg_count = builtins[value][1]
