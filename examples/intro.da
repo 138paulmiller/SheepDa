@@ -1,4 +1,4 @@
-; Examples of closures, dynamic binding and static scoping
+; Examples of closures, dynamic binding, static scoping and builtin operators
 
 ; Defines x to be a closure that accepts one parameter and returns another closure that accepts two parameter
 ; Calling (x "value") will bind the parameter x to be "value" when evaluating the inner closure, so x => "value"
@@ -6,24 +6,26 @@ x = \ x.
 	\ a b .
 		(x a b )
 
-; +ing strings to other strings and numbers
+
+; Adding strings to other strings and numbers
 (print ((x +) "hello" " world"))
 (print ((x +) "hello" 9.88))
 (print ((x +) "hello" 9))
 
-; -tracting strings and numbers from strings 
+; Subtracting strings and numbers from strings 
 ; Works by removing the right -string from the left string
 (print ((x -) "hello world!!!" " world"))
 (print ((x -) "hello100.98" 100.98))
 (print ((x -) "hello100.98" 100))
-;(print ((x -) 45 "4")) 	;Will not work! the left expression determines the operation type for artithmetic 
+(print ((x -) 45 "4")) 	
 
-;/ision works similar as an intersection of left and right 
+;Division works similar as an intersection of left and right 
 (print ((x /) "Hello World" "el"))
 (print ((x -) "Hello World" ""))
 
-;*tiplication works as a star operator
+;Multiplication works as a star operator
 (print ((x *) "Hello World" ""))
 (print ((x *) "Hello World" 3))
-
+;Multiplying two strings interweaves the strings
+(print ((x *) "Hello World" "123456")) 
 

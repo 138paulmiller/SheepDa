@@ -11,17 +11,15 @@ This project started out as a small language to help programmers quickly underst
 I will be spending time adding various features to the language to help it evolve from a toy language into a useful scripting language.
 
 ##### Syntax:
-	<stmt>	: <id> = <expr>			// Assignment to idetifier
+	<stmt>	: <id> = <expr>			// Binds expression to identifier
 		| <expr>			// Stand-alone Expression
 		| ; <sym> ... \n		// Comments, ends at newline
 	<expr>	: \ <param_id> <...> . <expr>	// Defines an abstraction
-		| (<expr> <expr> <..>)		// Applies erxpressions on the right to the leftmost expression
-		| [0-9]+.?[0-9]*		// Integer of Floating point literal
-		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier
+		| (<expr> <expr> <..>)		// Applies expressions on the right to the leftmost expression
+		| [0-9]+.?[0-9]*		// Integer of Floating point number 
+		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier 
 		| "."				// String, anything encapsulated within quotes
 	
-
-
 
 ### TODO:
 - [ ] FILE I/O applications to set where to print

@@ -1,0 +1,19 @@
+;apply x to f, then apply y-1 to result
+; expecting x to be a closure
+f = \x . 
+	 	\y. 
+	 		(if y 
+				(x ((f x) (- y 1)) y )
+				1)
+
+g1 = (f +)
+
+;4 + 3 + 2 + 1 = 11
+(print (g1 4))
+
+
+g2 = (f *)
+
+;4 * 3 * 2 * 1 = 24
+(print (g2 4))
+
