@@ -63,8 +63,9 @@ def main(args):
 				bindings.clear() 
 			else:
 				exprs = interpret(source, bindings)
-				#for expr in exprs:
-				#	print expr
+				for expr in exprs:
+					if isinstance(expr, tuple) and expr[0] == ERROR:					
+						print ERROR + ' ' + expr[1]
 			source = raw_input('@>')			
 		print 'Goodbye' 
 
@@ -415,9 +416,9 @@ def eval_print(bindings):
 
 def eval_if(bindings):
 	cond = evaluate(bindings['_x'], bindings)	
-	if cond != None and (cond is 'true' or cond != 0) :
+	if cond != 'false' and (cond is 'true' or cond != 0) :
 		# if error
-		if isinstance(cond, tuple) and len(cond) > 1 and cond[0] is ERROR:
+		if isinstance(cond, tuple) and cond[0] is ERROR:
 			expr = cond	
 		else:
 			# evaluate true expr
@@ -466,7 +467,7 @@ def eval_builtin(root, bindings):
 	elif root[0] == ERROR:
 		expr = root
 	else: 
-		expr= builtins[root][0](bindings)
+		expr= builtins[root][0](bindings)	
 	return expr
 
 #------------------------Evaluate --------------------------#
@@ -479,7 +480,9 @@ def evaluate(root, bindings):
 			print value[0], "Already exists!"	
 			expr = None	
 		else:
-			expr = bindings[value[0]] = evaluate(value[1], bindings)
+			expr = evaluate(value[1], bindings)
+			if not isinstance(expr, tuple) or not expr[0] == ERROR:
+				bindings[value[0]] = expr # is not error, bind
 	elif tag == CLOSURE:
 		# return a closure object with parent bindings
 		expr =  Closure(bindings, value[0], value[1])
@@ -504,7 +507,7 @@ def evaluate(root, bindings):
 			params = None
 			params = closure.params
 			if len(params) != count:
-				expr = (ERROR, 'Incorrect argument amount passed to application:'+ str(def_id))
+				expr = (ERROR, 'Incorrect argument amount passed to application: '+ str(def_id))
 			elif def_id in controls:
 				# if a control structure, add arguments to bindings				
 				for i in range(0, count):
@@ -522,11 +525,10 @@ def evaluate(root, bindings):
 					local_bindings[bind] = closure.bindings[bind]	
 				# evaluate each argument and bind it to the local level 
 				for i in range(0, count):
-					local_bindings[params[i]] = evaluate(args[i], bindings) 			
+					local_bindings[params[i]] = evaluate(args[i], bindings) 							
 				expr = evaluate(closure.expr, local_bindings)
-			
 			if expr == None:
-				expr = (ERROR, str(def_id) + ' is not bound to this closure')
+				expr = (ERROR, str(def_id) + " not defined in closure"+ str(closure))
 		# empty closure, could not find
 		else:
 			if closure:
@@ -540,7 +542,7 @@ def evaluate(root, bindings):
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
-			expr = (ERROR, tag + " not defined!")
+			expr = (ERROR, tag + " not defined in this context")
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
@@ -551,8 +553,6 @@ def evaluate(root, bindings):
 		expr = eval_builtin(root, bindings)
 	elif tag == BUILTIN: # if builtin, evaluate
 		expr = eval_builtin(value, bindings)
-		if expr == None:
-			expr = (ERROR, value + ' is not bound within this context.')
 	#else error		
 	return expr
  

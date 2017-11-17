@@ -19,7 +19,7 @@ g = ((b 3 5) 20)
 (print g)
 t = \ x y. 
 		(if x
-			( t (- x 1 ) (print (+ y 1)))
+			(print ( t (- x 1 ) (+ y 1))
 			y)
 (t 3 0)
 
