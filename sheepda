@@ -316,22 +316,7 @@ def eval_mul(bindings):
 	left = bindings['_x']
 	right = bindings['_y']
 	try:			
-		if isinstance(left, str):	
-			expr = ""
-		# expect integer value (number of times to repeat!
-			if isinstance(right, int):
-			 	while right > 0:
-					expr += left
-					right -= 1
-			elif isinstance(right, str):	
-				#return merged string
-				r = len(right)
-				for i in range(0,len(left)):
-					expr += left[i]
-					if i < r:
-						expr += right[i]
-		else:
-			expr = left * right
+		expr = left * right
 	except:			
 		expr = (ERROR, "Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)")
 	return expr						
