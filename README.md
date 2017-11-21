@@ -18,6 +18,7 @@ I will be spending time adding various features to the language to help it evolv
 		| (<expr> <expr> <..>)		// Applies expressions on the right to the leftmost expression
 		| [0-9]+.?[0-9]*		// Integer of Floating point number 
 		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier 
+		| [ <expr> ... ]		// List, closed brakcets with exprs seperated by spaces
 		| "."				// String, anything encapsulated within quotes
 	
 
