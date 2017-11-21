@@ -22,12 +22,15 @@ APPLY 	= 'APPLY' 	# Lambda Application
 CLOSURE = 'CLOSURE'  # Lambda Abstaction
 ASSIGN 	= 'ASSIGN'  # Variable assignement
 BUILTIN = 'BUILTIN' # Builtin Variables
+LIST 	= 'LIST'
 
 '''
 Token Symbol Tags
 '''
 LPAREN 	= 'LPAREN'
 RPAREN 	= 'RPAREN'
+LBRACK 	= 'LBRACK'
+RBRACK 	= 'RBRACK'
 LAMBDA 	= 'LAMBDA'
 DOT 	= 'DOT'
 STRING	= 'STRING'
@@ -41,7 +44,7 @@ ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
 keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false']
-controls = ['if']
+controls = ['if', 'import']
 
 #------------------------Repl--------------------------#
 def main(args):
@@ -62,10 +65,7 @@ def main(args):
 				# delete all user defined bindings
 				bindings.clear() 
 			else:
-				exprs = interpret(source, bindings)
-				for expr in exprs:
-					if isinstance(expr, tuple) and expr[0] == ERROR:					
-						print ERROR + ' ' + expr[1]
+				interpret(source, bindings)
 			source = raw_input('@>')			
 		print 'Goodbye' 
 
@@ -79,7 +79,10 @@ def interpret(source, bindings):
 		expr = evaluate(node, bindings)			
 		#print expr	
 		exprs.append(expr)
-	return exprs
+	for expr in exprs:
+		if isinstance(expr, tuple) and expr[0] == ERROR:					
+			print ERROR + ' ' + expr[1]
+
 
 #------------------------Lexer --------------------------#	
 class Lexer:
@@ -113,6 +116,10 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
+			elif  sym == '[':
+				token = (LBRACK,sym )
+			elif  sym == ']':
+				token = (RBRACK,sym )
 			elif sym  in keywords and not sym is '-':
 				token = (KEYWORD, sym)
 			elif sym == '\"': 
@@ -202,12 +209,18 @@ def parse(lexer):
 		elif tag != COMMENT: # ignore comments
 			ast.append(parse_expr(lexer))
 		tag, value = lexer.peek()
-
 	return ast
 
 def parse_expr(lexer):
 	'''
 	Parses individual expressions
+		(INT  int)
+		(ID  str)
+		(FLOAT  float)
+		(KETYWORD  str)
+		(STRING str)
+		(LIST  [<expr> ...])
+		(LAMBDA  [params .. ] <expr>)
 	'''
 	tag, value = lexer.next()
 	root = None
@@ -242,11 +255,24 @@ def parse_expr(lexer):
 			args.append(parse_expr(lexer))
 			tag, value = lexer.peek()
 		if tag == ERROR or tag == EOI:
-			root = ERROR, "Missing Closing Parentheses!" 		
+			root = (ERROR, 'Missing Closing Parentheses!')		
 		else:
 			#eat rparen
 			lexer.next()
 			root = (APPLY, (expr, args))
+	elif tag == LBRACK: 
+		exprs = []
+		tag, value = lexer.peek()
+		while tag != RBRACK and tag != EOI and tag != ERROR:
+			exprs.append(parse_expr(lexer))				
+			tag, value = lexer.peek()			
+		if tag == RBRACK:
+			lexer.next() # eat rbrack			
+			root = (LIST, exprs)
+		elif tag == EOI:
+			root = (ERROR, 'Missing closing list bracket')
+		else:
+			root = (tag, value)
 	elif tag == COMMENT or tag == ERROR:
 		root = tag, value
 	else:
@@ -399,7 +425,12 @@ def eval_print(bindings):
 
 def eval_print(bindings):
 	expr = bindings['0']
-	if expr == True:
+	if isinstance(expr, list):
+		s = '['
+		for e in expr:	
+			s += str(e) + ' '
+		expr = s+']'
+	elif expr == True:
 		expr = 'true'
 	elif expr == False:
 		expr = 'false'	
@@ -420,23 +451,36 @@ def eval_if(bindings):
 		# evaluate false expr
 		expr = evaluate(bindings['2'], bindings)	
 	return expr
+
+def eval_import(bindings):
+	expr = 'true'
+	try:
+		src = evaluate(bindings['0'], bindings)
+		# interpret the file
+		interpret(file(src).read(), bindings)
+	except:
+		expr = (ERROR, 'Import file not found:'+ str(bindings['0']))
+	#open and read file
+	return expr
+
 '''
 	Builtin Evaluate Action Table	
 	symbol : (function(bindings), paramcount)
 '''
 builtins = {
 	'if'	:(eval_if, 3),
-	'+'		:(eval_add, 2),
-	'-'		:(eval_sub,2),
-	'*'		:(eval_mul, 2),
-	'/'		:(eval_div, 2),
-	'<'		:(eval_lt, 2),
-	'>'		:(eval_gt,2),
+	'+'	:(eval_add, 2),
+	'-'	:(eval_sub,2),
+	'*'	:(eval_mul, 2),
+	'/'	:(eval_div, 2),
+	'<'	:(eval_lt, 2),
+	'>'	:(eval_gt,2),
 	'eq'	:(eval_eq,2),
 	'and'	:(eval_and,2),
 	'or'	:(eval_or,2),
 	'not'	:(eval_not,1),
-	'print'	:(eval_print,1 )
+	'print'	:(eval_print,1 ),
+	'import':(eval_import,1)
 }
 def eval_builtin(root, bindings):
 	expr = None
@@ -532,6 +576,11 @@ def evaluate(root, bindings):
 			expr = bindings[value] 			
 		else:
 			expr = (ERROR, tag + " not defined in this context")
+	elif tag == LIST:
+		# eval all exprs into list object
+		expr = []
+		for arg in value:
+			expr.append(evaluate(arg, bindings))
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
