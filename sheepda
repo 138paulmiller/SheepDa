@@ -48,26 +48,31 @@ controls = ['if', 'import']
 
 #------------------------Repl--------------------------#
 def main(args):
+	try:
+	   input = raw_input
+	except NameError:
+	   pass
 	bindings = {} 
 	if len(args) > 0: 
 		if args[0] == '-h':
-			print HELP
+			print(HELP)
 		if args[0] == '-s':
-			print SYNTAX
+			print(SYNTAX)
 		else:
 			interpret(file(args[0]).read(), bindings)
 	else: # repl
-		source = raw_input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help\n\n@>')			
+		source = input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help\n\n@>')		
 		while source != 'quit':
 			if source == 'help':
-				print HELP
+				print(HELP)
 			elif source == 'unbind':
 				# delete all user defined bindings
 				bindings.clear() 
 			else:
 				interpret(source, bindings)
-			source = raw_input('@>')			
-		print 'Goodbye' 
+			source = input('@>')			
+		print('Goodbye') 
+
 
 def interpret(source, bindings):
 	lexer = Lexer(source)
@@ -77,11 +82,11 @@ def interpret(source, bindings):
 	# evaluate each expr in ast
 	for node in ast:
 		expr = evaluate(node, bindings)			
-		#print expr	
+		#print(expr	
 		exprs.append(expr)
 	for expr in exprs:
 		if isinstance(expr, tuple) and expr[0] == ERROR:					
-			print ERROR + ' ' + expr[1]
+			print(ERROR + ' ' + expr[1])
 
 
 #------------------------Lexer --------------------------#	
@@ -366,9 +371,9 @@ def eval_div(bindings):
 			else:
 				right = str(right)
 				expr = ""
-			 	for sym in left:
+				for sym in left:
 					if not sym in right:
-					  expr += sym
+						expr += sym
 		else:
 			expr = left / right	
 	except:
@@ -420,7 +425,7 @@ def eval_or(bindings):
 
 def eval_print(bindings):
 	expr = bindings['0']
-	print expr
+	print(expr)
 	return expr
 
 def eval_print(bindings):
@@ -430,11 +435,7 @@ def eval_print(bindings):
 		for e in expr:	
 			s += str(e) + ' '
 		expr = s+']'
-	elif expr == True:
-		expr = 'true'
-	elif expr == False:
-		expr = 'false'	
-	print expr
+	print(expr)
 	return expr
 
 
@@ -510,7 +511,7 @@ def evaluate(root, bindings):
 	if tag == ASSIGN:
 		# add expr to binding with def_id key
 		if bindings.get(value[0]):
-			print value[0], "Already exists!"	
+			print(value[0], "Already exists!")
 			expr = None	
 		else:
 			expr = evaluate(value[1], bindings)
