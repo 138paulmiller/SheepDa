@@ -40,7 +40,7 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
-keywords = ['*','/','+', '<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false']
+keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false']
 controls = ['if']
 
 #------------------------Repl--------------------------#
@@ -113,7 +113,7 @@ class Lexer:
 				token = (DOT, sym)
 			elif sym == '=': 
 				token = (EQUAL, sym)
-			elif sym  in keywords:
+			elif sym  in keywords and not sym is '-':
 				token = (KEYWORD, sym)
 			elif sym == '\"': 
 				string = ""
@@ -284,8 +284,8 @@ class Closure:
 	
 #------------------------Evaluate Builtins--------------------------#
 def eval_add(bindings):
-	left = bindings['_x']
-	right = bindings['_y']
+	left = bindings['0']
+	right = bindings['1']
 	try:			
 		if isinstance(left, str):
 			right = str(right)
@@ -297,8 +297,8 @@ def eval_add(bindings):
 	return expr
 
 def eval_sub(bindings):
-	left = bindings['_x']
-	right = bindings['_y']
+	left = bindings['0']
+	right = bindings['1']
 	try:	
 		# if either operands are strings, get the intersection of the two
 		if isinstance(left, str) or isinstance(right, str):
@@ -313,17 +313,25 @@ def eval_sub(bindings):
 	return expr
 
 def eval_mul(bindings):
-	left = bindings['_x']
-	right = bindings['_y']
+	left = bindings['0']
+	right = bindings['1']
+	expr = None
 	try:			
-		expr = left * right
+		if  isinstance(left,str) and isinstance(right, str):
+			expr = ''
+			for i in range(0, len(left)):
+				expr += left[i]
+				if 	i < len(right):
+					expr += right[i]
+		else:		
+			expr = left * right
 	except:			
 		expr = (ERROR, "Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)")
 	return expr						
 
 def eval_div(bindings):
-	left = bindings['_x']
-	right = bindings['_y']
+	left = bindings['0']
+	right = bindings['1']
 	try:
 		if isinstance(left, str):	
 		# get the intersection!
@@ -342,40 +350,40 @@ def eval_div(bindings):
 	return expr							
 
 def eval_not(bindings):
-	if not bindings['_x']:
+	if not bindings['0']:
 		return  'true'
 	else:
 		return  'false'	
 
 def eval_lt(bindings):
-	if bindings['_x'] < bindings['_y']:
+	if bindings['0'] < bindings['1']:
 		return  'true'
 	else:
 		return  'false'
 
 def eval_gt(bindings):
-	if bindings['_x'] > bindings['_y']:
+	if bindings['0'] > bindings['1']:
 		return  'true'
 	else:
 		return  'false'
 
 def eval_eq(bindings):
-	if bindings['_x'] is bindings['_y']:
+	if bindings['0'] is bindings['1']:
 		return  'true'
 	else:
 		return  'false'
 	
 def eval_and(bindings):
-	if bindings['_x'] and bindings['_y']:
+	if bindings['0'] and bindings['1']:
 		return  'true'
 	else:
 		return  'false'
 
 def eval_or(bindings):
-	left = bindings['_x']
+	left = bindings['0']
 	# lazy eval
 	if left:			
-		expr = left or bindings['_y']
+		expr = left or bindings['1']
 	else:
 		expr = left
 	if expr:
@@ -385,12 +393,12 @@ def eval_or(bindings):
 	return expr
 
 def eval_print(bindings):
-	expr = bindings['_x']
+	expr = bindings['0']
 	print expr
 	return expr
 
 def eval_print(bindings):
-	expr = bindings['_x']
+	expr = bindings['0']
 	if expr == True:
 		expr = 'true'
 	elif expr == False:
@@ -400,17 +408,17 @@ def eval_print(bindings):
 
 
 def eval_if(bindings):
-	cond = evaluate(bindings['_x'], bindings)	
+	cond = evaluate(bindings['0'], bindings)	
 	if cond != 'false' and (cond is 'true' or cond != 0) :
 		# if error
 		if isinstance(cond, tuple) and cond[0] is ERROR:
 			expr = cond	
 		else:
 			# evaluate true expr
-			expr = evaluate(bindings['_y'], bindings)	
+			expr = evaluate(bindings['1'], bindings)	
 	else:
 		# evaluate false expr
-		expr = evaluate(bindings['_z'], bindings)	
+		expr = evaluate(bindings['2'], bindings)	
 	return expr
 '''
 	Builtin Evaluate Action Table	
@@ -442,12 +450,8 @@ def eval_builtin(root, bindings):
 			expr = False	
 		elif value in builtins:
 			arg_count = builtins[value][1]
-			if arg_count == 1:
-				expr = bindings[value] = Closure(bindings,  ['_x'], closure_tag)
-			elif arg_count == 2:
-				expr = bindings[value] = Closure(bindings,  ['_x', '_y'], closure_tag)
-			elif arg_count == 3:
-				expr = bindings[value] = Closure(bindings,  ['_x', '_y', '_z'], closure_tag)
+			params = [str(x) for x in range(0,arg_count)]
+			expr = bindings[value] = Closure(bindings,  params, closure_tag)
 	# else ( def_id, args) call to built_in closure
 	elif root[0] == ERROR:
 		expr = root
