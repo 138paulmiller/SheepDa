@@ -592,11 +592,9 @@ def eval_filter(bindings):
 
 
 def eval_fold(bindings):
-	# (fold <abstraction> <initial> <list>) ? TODO
+	# (fold <abstraction> <initial> <list>) 
 	# folds right! to fold left, reverse list! 
-	# expect a list and a closure
-	# each elem and its prev_accum is passed into a closure which returns new accum
-	# initial accum should be passed
+	# (fold + x [1 2 3 4]) = (+ 1 (+ 2( + 3 (+ 4 x))))
 	expr = None
 	intial = None
 	list_arg = None
