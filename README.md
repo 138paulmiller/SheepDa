@@ -20,11 +20,38 @@ I will be spending time adding various features to the language to help it evolv
 		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier 
 		| [ <expr> ... ]		// List, closed brakcets with exprs seperated by spaces
 		| "."				// String, anything encapsulated within quotes
+
+##### Overview
+Various example programs can be found in the example directory. 
+LISP-like prefix expressions with a lambda calculus like abstraction syntax.
+
+Anonymous functions using the lambda operator.
+
+
+	x = \ x y . (+ x y )	# Assign closed expression to x
+	(print (x 10 20))	# Prints 30, x->10
+	(print (\x y.(+ x y) 10 20))	# Also prints 30, lambda expression dynamically evaluated
 	
+Builtin List features.
+	
+	x = [ 1 2 3 4 5 6 7 8 9]	# Creates a list
+
+	y = (range 1 10)		# Creates a list = [1 .. 9]
+	
+	# Car and cdr like accessors
+	(print (head x) )	# 1
+	(print (tail x) ) 	# [2 3 4 5 6 7 8 9]
+	(print (head [(+ 1 2) ] ) ) 	# 3 (Evaluates element in list	
+
+	z = (map * x y ) 	# z = [ (* x[0] y[0]) ... (* x[9] y[9]) ]
+	(print z)	# [ 1 4 9 16 25 36 49 64 81 ]
+	
+	w = (fold - 0 [ 1 2 3 4 5] ) 	# w = 
+	
+		
+	
+
 
 ### TODO:
 - [ ] FILE I/O applications to set where to print
-- [ ] List construction applications Cons and Car 
-- [ ] Add Map and Reduce applications of Lists to enable Table like
-- [ ] Create include file application to load file evaluations into bindings
 

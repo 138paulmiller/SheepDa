@@ -43,7 +43,8 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
-keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold']
+keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', \
+			'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold']
 controls = ['if', 'import']
 
 #------------------------Repl--------------------------#
@@ -619,15 +620,13 @@ def eval_fold(bindings):
 		raw_input(closure)
 		# eval last two first!
 		i = len(list_arg)-1 
-		# eval at call scope, [x y] should not refer to \x y . in abstaction
-		params = [evaluate(list_arg[i],bindings), evaluate(intial, bindings)] # initial params
-		result = None
+		# eval at call scope, [x y] should not refer to \x y . in abstactions
+		result =  evaluate(intial, bindings)
 		while i >= 0:
-			local_bindings[closure.params[0]] = params[0]
-			local_bindings[closure.params[1]] = params[1]
+			local_bindings[closure.params[0]] = evaluate(list_arg[i],bindings)
+			local_bindings[closure.params[1]] = result
 			result = evaluate(closure.expr, local_bindings)
 			i-=1			
-			params = [result, evaluate(list_arg[i], bindings)] 	
 		expr = result	
 	return expr
 
