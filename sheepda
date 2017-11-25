@@ -43,7 +43,7 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 
-keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false']
+keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', 'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'reduce']
 controls = ['if', 'import']
 
 #------------------------Repl--------------------------#
@@ -51,7 +51,7 @@ def main(args):
 	try:
 	   input = raw_input
 	except NameError:
-	   pass
+		pass
 	bindings = {} 
 	if len(args) > 0: 
 		if args[0] == '-h':
@@ -87,7 +87,6 @@ def interpret(source, bindings):
 	for expr in exprs:
 		if isinstance(expr, tuple) and expr[0] == ERROR:					
 			print(ERROR + ' ' + expr[1])
-
 
 #------------------------Lexer --------------------------#	
 class Lexer:
@@ -196,7 +195,7 @@ def parse(lexer):
 	Returns AST Nodes 
 		(ASSIGN, (def_id_id, expr))
 		(CLOSURE, ([<def_id_id> ...], expr))
-		(APPLY [ID KEYWORD] [<expr> ...])
+		(APPLY ([ID KEYWORD] [<expr> ...]))
 	'''
 	ast = []
 	tag, value = lexer.peek()
@@ -289,18 +288,23 @@ class Closure:
 	'''
 		Closure Container
 	'''
-	def __init__(self, bindings, params, expr):
+	def __init__(self, bindings,  expr, params, param_count=0):
 		# locally bound def_idiables
 		self.bindings = {}
 		for def_id in bindings.keys():
 			self.bindings[def_id] = bindings[def_id]
 
 		# parameters to be substituted at call binding scope
-		self.params = []
-		for def_id in params:
-			self.params.append(def_id)		
-		# expression to evaluate at the scope of bindings
 		self.expr = expr
+		self.params = []
+		if params:
+			param_count = 0
+			for def_id in params:
+				self.params.append(def_id)
+				param_count+=1		
+			# expression to evaluate at the scope of bindings
+		self.param_count = param_count
+
 
 	def __repr__(self):
 		s = '('
@@ -324,7 +328,7 @@ def eval_add(bindings):
 			left = str(left)
 		expr = left + right
 	except:
-		expr = (ERROR, "Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)")						 			
+		expr = (ERROR, 'Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)')						 			
 	return expr
 
 def eval_sub(bindings):
@@ -340,24 +344,33 @@ def eval_sub(bindings):
 		else:
 			expr = left - right 		
 	except:
-		expr = (ERROR, "Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)")						 			
+		expr = (ERROR, 'Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)')						 			
 	return expr
 
 def eval_mul(bindings):
 	left = bindings['0']
 	right = bindings['1']
 	expr = None
-	try:			
-		if  isinstance(left,str) and isinstance(right, str):
+
+	if  isinstance(left,str):
+		if isinstance(right, str):
 			expr = ''
 			for i in range(0, len(left)):
 				expr += left[i]
 				if 	i < len(right):
 					expr += right[i]
-		else:		
-			expr = left * right
-	except:			
-		expr = (ERROR, "Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)")
+		else:
+			expr = ''
+			i = 0
+			# too large for range
+			while i < int(right):
+				expr += left
+				i+=1		
+	else:
+		try:			
+			expr = left * right	
+		except:			
+			expr = (ERROR, 'Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)')
 	return expr						
 
 def eval_div(bindings):
@@ -370,14 +383,14 @@ def eval_div(bindings):
 				expr = left
 			else:
 				right = str(right)
-				expr = ""
+				expr = ''
 				for sym in left:
 					if not sym in right:
 						expr += sym
 		else:
 			expr = left / right	
 	except:
-		expr = (ERROR, "Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)")
+		expr = (ERROR, 'Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)')
 	return expr							
 
 def eval_not(bindings):
@@ -423,14 +436,12 @@ def eval_or(bindings):
 		expr = 'false'
 	return expr
 
-def eval_print(bindings):
-	expr = bindings['0']
-	print(expr)
-	return expr
 
 def eval_print(bindings):
 	expr = bindings['0']
-	if isinstance(expr, list):
+	if isinstance(expr, tuple) and expr[0] is ERROR:
+		return None 
+	elif isinstance(expr, list):
 		s = '['
 		for e in expr:	
 			s += str(e) + ' '
@@ -464,12 +475,105 @@ def eval_import(bindings):
 	#open and read file
 	return expr
 
+def eval_range(bindings):
+	# return a list between given ranges
+	start = bindings['0']
+	end  = bindings['1']
+	expr = []		
+	d = 1
+	try:
+		if not isinstance(start, int):
+			start = evaluate(bindings['0'], bindings) 	
+		if not isinstance(end, int):
+			end = evaluate(bindings['0'], bindings)
+		if start > end:
+			d = -1
+		while start != end:	
+			expr.append(start)	
+			start += d
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (range <Int> <Int>)')
+
+	return expr
+
+def eval_filter(bindings):
+	# (filter <cond_closure>  <list>)
+	# expect a list and a closure
+	# each elem is passed to closure that should except one param 
+	# and return cond if true add elem to list thats returned
+	expr = []
+	return expr
+
+
+def eval_map(bindings):
+	# (map <closure> <list> ... )
+	# expect a list and a closure
+	# each elem is passed to closure that should except one param for each list
+	# added result to list thats returned
+	expr = None
+	closure = None
+	args = []
+	i = 1 #list args
+	list_size = 0
+	local_bindings = {}
+	param_count = 0
+	if bindings.has_key('0'):
+		closure = bindings['0']
+
+	if not isinstance(closure, Closure):
+		expr = (ERROR, 'Invalid abstraction Operands: Expected (map <abstraction> <list> ...)') 
+	else:
+		for local in bindings.keys():
+			local_bindings[local] = bindings[local]
+		param_count= closure.param_count
+	# get all args
+	while bindings.has_key(str(i)) and not expr: 
+		args.append(bindings[str(i)])
+		if list_size is 0:
+			list_size = len(args[-1])
+		elif not list_size is len(args[-1]):	
+		  	expr = (ERROR, 'All list arguments must be of equal length: Expected (map <abstraction> <list> ...)') 
+		elif not isinstance(args[-1], list):
+			expr = (ERROR, 'Invalid list Operands: Expected (map <abstraction> <list> ...)') 
+		i += 1
+	# see if len(args) matches len of closure, if variable args, just pass
+	if not expr:
+		if param_count != -1 and len(args) != param_count:
+		 	expr = (ERROR, 'Incorrect number of lists passed to application in (map <abstraction> <list> ...)') 		
+		else:
+			i = 0 # cur eval element
+			expr = []	
+			# var args or anonymous func??? TODO
+			while i < list_size:				
+				for j in range(0, len(closure.params)):
+					local_bindings[closure.params[j]] = args[j][i]
+				result = evaluate(closure.expr, local_bindings)
+				if isinstance(result, tuple ) and result[0] is ERROR:
+					expr = result
+					i = list_size # end loop
+				else:
+					expr.append( result)
+				i += 1
+	return expr
+
+
+def eval_reduce(bindings):
+	# (reduce <closure> <initial> <list>)
+	# expect a list and a closure
+	# each elem and its prev_accum is passed into a closure which returns new accum
+	# initial accum should be passed
+	expr = None
+	return expr
+
 '''
 	Builtin Evaluate Action Table	
 	symbol : (function(bindings), paramcount)
 '''
 builtins = {
+	# control
 	'if'	:(eval_if, 3),
+	'import':(eval_import,1),
+	# operators
 	'+'	:(eval_add, 2),
 	'-'	:(eval_sub,2),
 	'*'	:(eval_mul, 2),
@@ -480,8 +584,13 @@ builtins = {
 	'and'	:(eval_and,2),
 	'or'	:(eval_or,2),
 	'not'	:(eval_not,1),
+	# utilities
 	'print'	:(eval_print,1 ),
-	'import':(eval_import,1)
+	'range':(eval_range,2),
+	'filter':(eval_filter,2),
+	'reduce':(eval_reduce,2),
+
+	'map':(eval_map,-1) 
 }
 def eval_builtin(root, bindings):
 	expr = None
@@ -495,8 +604,11 @@ def eval_builtin(root, bindings):
 			expr = False	
 		elif value in builtins:
 			arg_count = builtins[value][1]
-			params = [str(x) for x in range(0,arg_count)]
-			expr = bindings[value] = Closure(bindings,  params, closure_tag)
+			if arg_count != -1: 
+				params = [str(x) for x in range(0,arg_count)]
+				expr = bindings[value] = Closure(bindings,  closure_tag, params)
+			else:
+				expr = bindings[value] = Closure(bindings,  closure_tag, None, arg_count)
 	# else ( def_id, args) call to built_in closure
 	elif root[0] == ERROR:
 		expr = root
@@ -519,14 +631,16 @@ def evaluate(root, bindings):
 				bindings[value[0]] = expr # is not error, bind
 	elif tag == CLOSURE:
 		# return a closure object with parent bindings
-		expr =  Closure(bindings, value[0], value[1])
+		expr =  Closure(bindings, value[1], value[0])
 	elif tag == APPLY:
 		# Evaluate by  binding all closure params with each args
 		def_id = value[0] # get closure id
-		args = value[1]   
+		args = value[1]
 		closure = None
 		# if an application, get the closure definition
-		if def_id[0] == APPLY:
+		if def_id[0] is CLOSURE :	
+			closure =  evaluate(def_id, bindings) # if the def_id is not an id but a closure		
+		elif def_id[0] is APPLY:
 			closure = evaluate(def_id, bindings)
 		# if not an application, and not user defined, request builtin closure def
 		elif def_id not in bindings:
@@ -537,14 +651,14 @@ def evaluate(root, bindings):
 			closure = bindings[def_id]
 		# if closure was found 
 		if isinstance(closure, Closure):
-			count= len(args)
-			params = None
+			arg_count= len(args)
+			param_count = closure.param_count
 			params = closure.params
-			if len(params) != count:
-				expr = (ERROR, 'Incorrect argument amount passed to application: '+ str(def_id))
+			if param_count != -1 and param_count != arg_count:
+				expr = (ERROR, 'Incorrect number of arguments passed to application: '+ str(def_id))
 			elif def_id in controls:
 				# if a control structure, add arguments to bindings				
-				for i in range(0, count):
+				for i in range(0, arg_count):
 					# do not evaluate args in control structure
 					bindings[params[i]] = args[i] 	
 				expr = eval_builtin(def_id,  bindings)
@@ -557,12 +671,18 @@ def evaluate(root, bindings):
 				# update closure bindings last, will add closure precedence over calling
 				for bind in closure.bindings.keys():
 					local_bindings[bind] = closure.bindings[bind]	
-				# evaluate each argument and bind it to the local level 
-				for i in range(0, count):
-					local_bindings[params[i]] = evaluate(args[i], bindings) 							
+				if param_count != -1: # if not var args
+					# evaluate each argument and bind it to the local level 
+					for i in range(0, arg_count):
+						local_bindings[params[i]] = evaluate(args[i], bindings) 	
+				else:
+					param = 0
+					for i in range(0, arg_count):
+						local_bindings[str(param)] = evaluate(args[i], bindings) 
+						param += 1			
 				expr = evaluate(closure.expr, local_bindings)
 			if expr == None:
-				expr = (ERROR, str(def_id) + " not defined in closure"+ str(closure))
+				expr = (ERROR, str(def_id) + " not defined in abstraction"+ str(closure))
 		# empty closure, could not find
 		else:
 			if closure:
@@ -576,7 +696,7 @@ def evaluate(root, bindings):
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
-			expr = (ERROR, tag + " not defined in this context")
+			expr = (ERROR, tag + " not defined in this scope")
 	elif tag == LIST:
 		# eval all exprs into list object
 		expr = []
@@ -592,6 +712,9 @@ def evaluate(root, bindings):
 		expr = eval_builtin(root, bindings)
 	elif tag == BUILTIN: # if builtin, evaluate
 		expr = eval_builtin(value, bindings)
+	elif tag == ERROR:
+		print(tag + str(value))
+		expr = None
 	#else error		
 	return expr
  
