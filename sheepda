@@ -440,7 +440,7 @@ def eval_or(bindings):
 def eval_print(bindings):
 	expr = bindings['0']
 	if isinstance(expr, tuple) and expr[0] is ERROR:
-		return None 
+		return expr 
 	elif isinstance(expr, list):
 		s = '['
 		for e in expr:	
@@ -608,7 +608,7 @@ def eval_fold(bindings):
 		list_arg = bindings['2']
 	if not closure or not isinstance(closure, Closure) \
 		or not list_arg or not isinstance(list_arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (reduce <abstraction> <initial> <list>)') 
+		expr = (ERROR, 'Invalid Operands: Expected (fold <abstraction> <initial> <list>)') 
 	elif closure.param_count != 2:
 		expr = (ERROR, 'Invalid abstraction Parameters: Expected 2 parameters in (reduce <abstraction> <initial> <list>)') 
 	else:	
@@ -616,16 +616,19 @@ def eval_fold(bindings):
 		for local in bindings.keys():
 			local_bindings[local] = bindings[local]
 
+		raw_input(closure)
 		# eval last two first!
 		i = len(list_arg)-1 
 		# eval at call scope, [x y] should not refer to \x y . in abstaction
 		params = [evaluate(list_arg[i],bindings), evaluate(intial, bindings)] # initial params
+		result = None
 		while i >= 0:
-			local_bindings['0'] = params[0]
-			local_bindings['1'] = params[1]
-			result = evaluate(closure.expr, local_bindings)	
+			local_bindings[closure.params[0]] = params[0]
+			local_bindings[closure.params[1]] = params[1]
+			result = evaluate(closure.expr, local_bindings)
 			i-=1			
 			params = [result, evaluate(list_arg[i], bindings)] 	
+		expr = result	
 	return expr
 
 '''
@@ -764,7 +767,7 @@ def evaluate(root, bindings):
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
-			expr = (ERROR, tag + " not defined in this scope")
+			expr = (ERROR, str(tag) + str(value) + " not defined in this scope")
 	elif tag == LIST:
 		# eval all exprs into list object
 		expr = []
