@@ -16,6 +16,8 @@ DEBUG = True
 HELP = file(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
 SYNTAX = file(os.path.dirname(os.path.abspath(__file__))+"/SYNTAX").read()
 SRC_DIR = '' # dir of root script 
+sys.setrecursionlimit(1000)
+
 '''
 AST Node Tags
 '''
@@ -43,8 +45,10 @@ COMMENT = 'COMMENT'
 EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
+TYPE 	= 'TYPE'
 
-keywords = ['*','/','+', '-','<', '>', 'eq', 'and','or','not', \
+types = ['int', 'float', 'list', 'bool']
+keywords = ['*','/', '%','+', '-','<', '>', 'eq', 'and','or','not', \
 			'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold']
 controls = ['if', 'import']
 
@@ -73,13 +77,12 @@ def main(args):
 				# delete all user defined bindings
 				bindings.clear() 
 			else:
-				interpret(source, bindings)		
+				exprs = interpret(source, bindings, is_repl=True)						
 			source = input('@>')			
 		print('Goodbye') 
 
 
-def interpret(source, bindings, is_file=False):
-
+def interpret(source, bindings, is_file=False, is_repl =False):
 	if is_file:
 		try:			
 			global SRC_DIR
@@ -98,9 +101,11 @@ def interpret(source, bindings, is_file=False):
 	# evaluate each expr in ast
 	for node in ast:
 		expr = evaluate(node, bindings)
-		exprs.append(expr)
+		exprs.append(expr)	
 		if isinstance(expr, tuple) and expr[0] == ERROR:
 			print(ERROR + ' ' + expr[1])	
+		elif is_repl:
+			print expr
 	return exprs
 
 #------------------------Lexer --------------------------#	
@@ -112,8 +117,12 @@ class Lexer:
 		self.input = input
 		self.pos = 0 
 		self.len = len(self.input)
+		self.cur_token = None
 
 	def peek(self):
+		# if already found token
+		if self.cur_token:
+			return self.cur_token
 		token = None
 		# eat whitespace
 		while self.pos < self.len and  \
@@ -124,6 +133,7 @@ class Lexer:
 		if self.pos >= self.len:
 			token = (EOI, 'End of Input')
 		else:
+			
 			sym = self.input[self.pos]
 			if  sym == '(':
 				token = (LPAREN,sym )
@@ -139,7 +149,7 @@ class Lexer:
 				token = (LBRACK,sym )
 			elif  sym == ']':
 				token = (RBRACK,sym )
-			elif sym  in keywords and not sym is '-':
+			elif sym  in keywords and not sym == '-':
 				token = (KEYWORD, sym)
 			elif sym == '\"': 
 				string = ""
@@ -161,11 +171,13 @@ class Lexer:
 			elif sym.isalpha(): # id
 				def_id = sym
 				i = self.pos+1
-				while i <  self.len and self.input[i].isalnum(): 
+				while i <  self.len and (self.input[i].isalnum() or self.input[i] == '_'): 
 					def_id += self.input[i]
 					i+=1
 				if def_id in keywords or def_id in controls:
-					token = (KEYWORD, def_id)				
+					token = (KEYWORD, def_id)
+				elif def_id  in types:
+					token = (TYPE, def_id)				
 				else:
 					token = (ID, def_id)
 				
@@ -190,12 +202,14 @@ class Lexer:
 				else: # subtraction operator 	
 					token = (KEYWORD, sym)
 			else:
-				token = (ERROR, 'Unknown Token: ' + self.input[self.pos])
+				token = (ERROR, 'Unknown Token: ' + self.input[self.pos])		
+		self.cur_token = token		
 		return token									
 
 	def next(self):
 		token = self.peek()
 		if token:
+			self.cur_token = None # eat another token
 			if token[0] != ERROR:
 				# offset input by token lexeme len
 				self.pos += len(token[1])
@@ -244,13 +258,14 @@ def parse_expr(lexer):
 		(ID  str)
 		(FLOAT  float)
 		(KETYWORD  str)
+		(TYPE  str)
 		(STRING str)
 		(LIST  [<expr> ...])
 		(LAMBDA  [params .. ] <expr>)
 	'''
 	tag, value = lexer.next()
 	root = None
-	if tag in [KEYWORD, ID, FLOAT, INT, STRING]: # if ID or Float or ...
+	if tag in [TYPE, KEYWORD, ID, FLOAT, INT, STRING]: # if ID or Float or ...
 		 # eat token
 		root = (tag, value)
 		# return 
@@ -317,7 +332,7 @@ class Closure:
 		self.bindings = {}
 		for def_id in bindings.keys():
 			self.bindings[def_id] = bindings[def_id]
-
+		self.tail_rec = False
 		# parameters to be substituted at call binding scope
 		self.expr = expr
 		self.params = []
@@ -370,7 +385,7 @@ def eval_sub(bindings):
 			else:
 				expr = str(left).replace( str(right), '')	
 		else:
-			expr = left - right 		
+			expr = left - right		
 	except:
 		expr = (ERROR, 'Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)')						 			
 	return expr
@@ -396,7 +411,7 @@ def eval_mul(bindings):
 				i+=1		
 	else:
 		try:			
-			expr = left * right	
+			expr = left * right
 		except:			
 			expr = (ERROR, 'Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)')
 	return expr						
@@ -421,6 +436,32 @@ def eval_div(bindings):
 		expr = (ERROR, 'Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)')
 	return expr							
 
+def eval_mod(bindings):
+	left = bindings['0']
+	right = bindings['1']
+	try:
+		expr = left % right	
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (% <Int|Float> <Int>)')
+	return expr							
+
+
+def eval_root(bindings):
+	# take a square root, cube root, etc
+	try:
+		expr = evaluate(bindings['0'], bindings) ** (1.0/evaluate(bindings['1'], bindings))
+
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (root <Int|Float> <Int|Float>)')		
+	return expr
+
+def eval_exp(bindings):
+	try:
+		expr = evaluate(bindings['0'], bindings) ** (evaluate(bindings['1'], bindings))
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (exp <Int|Float> <Int|Float>)')		
+	return expr
+
 def eval_not(bindings):
 	if not bindings['0']:
 		return  'true'
@@ -440,7 +481,7 @@ def eval_gt(bindings):
 		return  'false'
 
 def eval_eq(bindings):
-	if bindings['0'] is bindings['1']:
+	if bindings['0'] == bindings['1']:
 		return  'true'
 	else:
 		return  'false'
@@ -465,9 +506,22 @@ def eval_or(bindings):
 	return expr
 
 
+def eval_type(bindings):
+	expr = bindings['0']
+	if isinstance(expr, int):
+		expr = 'int'
+	elif isinstance(expr, float):
+		expr = 'float'
+	elif isinstance(expr, list):
+		expr = 'list'
+	elif isinstance(expr, bool):
+		expr = 'bool'
+	return expr
+
+
 def eval_print(bindings):
 	expr = bindings['0']
-	if isinstance(expr, tuple) and expr[0] is ERROR:
+	if isinstance(expr, tuple) and expr[0] == ERROR:
 		return expr 
 	elif isinstance(expr, list):
 		s = '['
@@ -477,12 +531,14 @@ def eval_print(bindings):
 	print(expr)
 	return expr
 
+def eval_exit(bindings):
+	sys.exit(evaluate(bindings['0'], bindings))
 
 def eval_if(bindings):
 	cond = evaluate(bindings['0'], bindings)	
-	if cond != 'false' and (cond is 'true' or cond != 0) :
+	if cond != 'false' and (cond == 'true' or cond != 0) :
 		# if error
-		if isinstance(cond, tuple) and cond[0] is ERROR:
+		if isinstance(cond, tuple) and cond[0] == ERROR:
 			expr = cond	
 		else:
 			# evaluate true expr
@@ -491,12 +547,13 @@ def eval_if(bindings):
 		# evaluate false expr
 		expr = evaluate(bindings['2'], bindings)	
 	return expr
+	
 
 def eval_import(bindings):
 	source = evaluate(bindings['0'], bindings)
 	# interpret the file
 	expr =  interpret(source, bindings, True)
-	if not isinstance(expr, tuple) or not expr[0] is ERROR:
+	if not isinstance(expr, tuple) or not expr[0] == ERROR:
 		expr = 'true'
 	return expr
 
@@ -599,7 +656,7 @@ def eval_map(bindings):
 				for j in range(0, len(closure.params)):
 					local_bindings[closure.params[j]] = args[j][i]
 				result = evaluate(closure.expr, local_bindings)
-				if isinstance(result, tuple ) and result[0] is ERROR:
+				if isinstance(result, tuple ) and result[0] == ERROR:
 					expr = result
 					i = list_size # end loop
 				else:
@@ -658,19 +715,24 @@ def eval_fold(bindings):
 '''
 builtins = {
 	# control
-	'if'	:(eval_if, 3),
+	'if'	:(eval_if, 3),	
 	'import':(eval_import,1),
+	'exit':(eval_exit,1),
 	# operators
 	'+'	:(eval_add, 2),
 	'-'	:(eval_sub,2),
 	'*'	:(eval_mul, 2),
 	'/'	:(eval_div, 2),
+	'%'	:(eval_mod, 2),
 	'<'	:(eval_lt, 2),
 	'>'	:(eval_gt,2),
 	'eq'	:(eval_eq,2),
+	'root'	:(eval_root,2),
+	'exp'	:(eval_exp,2),
 	'and'	:(eval_and,2),
 	'or'	:(eval_or,2),
 	'not'	:(eval_not,1),
+	'type'	:(eval_type,1),
 	# utilities
 	'print'	:(eval_print,1 ),
 	'range':(eval_range,2),
@@ -688,10 +750,8 @@ def eval_builtin(root, bindings):
 	if root[0] == KEYWORD:
 		tag, value = root
 		closure_tag = (BUILTIN, value)
-		if value == 'true':
-			expr = True
-		elif value ==  'false':
-			expr = False	
+		if value == 'true' or value ==  'false':
+			expr = value
 		elif value in builtins:
 			arg_count = builtins[value][1]
 			if arg_count != -1: 
@@ -732,9 +792,9 @@ def evaluate(root, bindings):
 		args = value[1]
 		closure = None
 		# if an application, get the closure definition
-		if def_id[0] is CLOSURE :	
+		if def_id[0] == CLOSURE :	
 			closure =  evaluate(def_id, bindings) # if the def_id is not an id but a closure		
-		elif def_id[0] is APPLY:
+		elif def_id[0] == APPLY:
 			closure = evaluate(def_id, bindings)
 		# if not an application, and not user defined, request builtin closure def
 		elif def_id not in bindings:
@@ -757,7 +817,7 @@ def evaluate(root, bindings):
 				for i in range(0, arg_count):
 					# do not evaluate args in control structure
 					bindings[params[i]] = args[i] 	
-				expr = eval_builtin(def_id,  bindings)
+				expr = eval_builtin(def_id,  bindings)			
 			else:
 				# if a application closure
 				local_bindings	= {}
@@ -775,7 +835,7 @@ def evaluate(root, bindings):
 					param = 0
 					for i in range(0, arg_count):
 						local_bindings[str(param)] = evaluate(args[i], bindings) 
-						param += 1			
+						param += 1		
 				expr = evaluate(closure.expr, local_bindings)
 		# empty closure, could not find
 		else:
@@ -790,7 +850,7 @@ def evaluate(root, bindings):
 		if value in bindings:
 			expr = bindings[value] 			
 		else:
-			expr = (ERROR, str(tag) + str(value) + " not defined in this scope")
+			expr = (ERROR, str(tag) + ' ' + str(value) + " not defined in this scope")
 	elif tag == LIST:
 		# eval all exprs into list object
 		expr = []
@@ -804,6 +864,8 @@ def evaluate(root, bindings):
 		expr = str(value)
 	elif tag == KEYWORD: #if keyword, get builtin definition
 		expr = eval_builtin(root, bindings)
+	elif tag == TYPE:	
+		expr = value
 	elif tag == BUILTIN: # if builtin, evaluate
 		expr = eval_builtin(value, bindings)
 	#else error		
