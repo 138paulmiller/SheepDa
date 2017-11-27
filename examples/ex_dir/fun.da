@@ -1,0 +1,10 @@
+f = \y. 
+	\x .(if (> x 0.001) 
+			(and 	((f y) (/ x y)) 
+					(print x))
+		0)
+
+; Create a closure that takes a decrement number first and returns a function that takes a starting number
+; The recursive call to f rebind y to f and calls the returned anonymous function
+
+(print f)

@@ -28,25 +28,32 @@ LISP-like prefix expressions with a lambda calculus like abstraction syntax.
 Anonymous functions using the lambda operator.
 
 
-	x = \ x y . (+ x y )	# Assign closed expression to x
-	(print (x 10 20))	# Prints 30, x->10
+	x = \ x y . (+ x y )			# Assign closed expression to x
+	(print (x 10 20))				# Prints 30, x->10
 	(print (\x y.(+ x y) 10 20))	# Also prints 30, lambda expression dynamically evaluated
+	
+	p = print
+	(p "Hello")						# p is now a reference to print
+
+
+Importing other files
+
+	(import "examples/fib.da") 		# Interprets the file at the relative directory of script 
+
 	
 Builtin List features.
 	
-	x = [ 1 2 3 4 5 6 7 8 9]	# Creates a list
-
-	y = (range 1 10)		# Creates a list = [1 .. 9]
+	x = [ 1 2 3 4 5 6 7 8 9]		# Creates a list
+	y = (range 1 10)				# Creates a list = [1 .. 9]
 	
-	# Car and cdr like accessors
-	(print (head x) )	# 1
-	(print (tail x) ) 	# [2 3 4 5 6 7 8 9]
+	(print (head x) )				# 1
+	(print (tail x) ) 				# [2 3 4 5 6 7 8 9]
 	(print (head [(+ 1 2) ] ) ) 	# 3 (Evaluates element in list	
 
-	z = (map * x y ) 	# z = [ (* x[0] y[0]) ... (* x[9] y[9]) ]
-	(print z)	# [ 1 4 9 16 25 36 49 64 81 ]
+	z = (map * x y ) 				# z = [ (* x[0] y[0]) ... (* x[9] y[9]) ]
+	(print z)						# [ 1 4 9 16 25 36 49 64 81 ]
 	
-	w = (fold - 0 [ 1 2 3 4 5] ) 	# w = 
+	w = (fold - 0 [ 1 2 3 4 5] ) 	# w = 1 - (2 - (3 - (4 - (5 - 0)))) = 3 
 	
 		
 	

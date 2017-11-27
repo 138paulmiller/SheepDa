@@ -13,8 +13,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 import sys, os
 VERSION = 0.1
 DEBUG = True
-HELP = open(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
-SYNTAX = open(os.path.dirname(os.path.abspath(__file__))+"/SYNTAX").read()
+HELP = file(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
+SYNTAX = file(os.path.dirname(os.path.abspath(__file__))+"/SYNTAX").read()
+SRC_DIR = '' # dir of root script 
 '''
 AST Node Tags
 '''
@@ -57,37 +58,50 @@ def main(args):
 	if len(args) > 0: 
 		if args[0] == '-h':
 			print(HELP)
-		if args[0] == '-s':
+		elif args[0] == '-s':
 			print(SYNTAX)
 		else:
-			interpret(file(args[0]).read(), bindings)
+			global SRC_DIR
+			SRC_DIR = os.path.dirname(os.path.abspath(args[0]))
+			interpret(args[0], bindings, True) # interp file
 	else: # repl
 		source = input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help\n\n@>')		
-		while source != 'quit':
+		while source != 'quit' :
 			if source == 'help':
 				print(HELP)
 			elif source == 'unbind':
 				# delete all user defined bindings
 				bindings.clear() 
 			else:
-				interpret(source, bindings)
+				interpret(source, bindings)		
 			source = input('@>')			
 		print('Goodbye') 
 
 
-def interpret(source, bindings):
+def interpret(source, bindings, is_file=False):
+
+	if is_file:
+		try:			
+			global SRC_DIR
+			source = SRC_DIR +'/'+ os.path.basename(source)
+			# open file with its absolute path
+			source = file(source).read()
+		except:
+			expr = (ERROR, 'Import file not found:'+ str(source))
+			print expr[0], ' ', expr[1] 
+			return expr
+			
 	lexer = Lexer(source)
 	# generate ast [expr ... ]
 	ast = parse(lexer)
-	exprs = []
+	exprs = []		
 	# evaluate each expr in ast
 	for node in ast:
-		expr = evaluate(node, bindings)			
-		#print(expr	
+		expr = evaluate(node, bindings)
 		exprs.append(expr)
-	for expr in exprs:
-		if isinstance(expr, tuple) and expr[0] == ERROR:					
-			print(ERROR + ' ' + expr[1])
+		if isinstance(expr, tuple) and expr[0] == ERROR:
+			print(ERROR + ' ' + expr[1])	
+	return exprs
 
 #------------------------Lexer --------------------------#	
 class Lexer:
@@ -199,8 +213,9 @@ def parse(lexer):
 		(APPLY ([ID KEYWORD] [<expr> ...]))
 	'''
 	ast = []
+	done = False
 	tag, value = lexer.peek()
-	while tag != ERROR and tag != EOI:
+	while not done:
 		if tag == ID:
 			# get def id 
 			def_id = lexer.next()
@@ -211,9 +226,15 @@ def parse(lexer):
 				ast.append((ASSIGN, (def_id[1], parse_expr(lexer))))
 			else: # standalone def_id
 				ast.append(def_id)
+		elif tag == ERROR:
+			done = True
+			ast.append((tag,value))
+		elif tag == EOI:
+			done = True	
 		elif tag != COMMENT: # ignore comments
 			ast.append(parse_expr(lexer))
-		tag, value = lexer.peek()
+		tag, value = lexer.peek()	
+				
 	return ast
 
 def parse_expr(lexer):
@@ -259,7 +280,9 @@ def parse_expr(lexer):
 		while tag != RPAREN and tag != ERROR and tag != EOI:	
 			args.append(parse_expr(lexer))
 			tag, value = lexer.peek()
-		if tag == ERROR or tag == EOI:
+		if tag == ERROR:
+			root = tag, value
+		elif tag == EOI:
 			root = (ERROR, 'Missing Closing Parentheses!')		
 		else:
 			#eat rparen
@@ -310,7 +333,11 @@ class Closure:
 	def __repr__(self):
 		s = '('
 		for p in self.params:
-			s+= p + ' '
+			# print a b c as param ids even though they are 0 1 2 	
+			if p.isdigit():	
+				s+= str(chr(ord('a')+int(p))) + ' '
+			else:
+				s += p + ' '
 		s += ')'
 			
 		# s += ')\n\tBINDINGS: '
@@ -466,14 +493,11 @@ def eval_if(bindings):
 	return expr
 
 def eval_import(bindings):
-	expr = 'true'
-	try:
-		src = evaluate(bindings['0'], bindings)
-		# interpret the file
-		interpret(file(src).read(), bindings)
-	except:
-		expr = (ERROR, 'Import file not found:'+ str(bindings['0']))
-	#open and read file
+	source = evaluate(bindings['0'], bindings)
+	# interpret the file
+	expr =  interpret(source, bindings, True)
+	if not isinstance(expr, tuple) or not expr[0] is ERROR:
+		expr = 'true'
 	return expr
 
 def eval_range(bindings):
@@ -616,8 +640,6 @@ def eval_fold(bindings):
 		# get locals
 		for local in bindings.keys():
 			local_bindings[local] = bindings[local]
-
-		raw_input(closure)
 		# eval last two first!
 		i = len(list_arg)-1 
 		# eval at call scope, [x y] should not refer to \x y . in abstactions
@@ -727,7 +749,9 @@ def evaluate(root, bindings):
 			param_count = closure.param_count
 			params = closure.params
 			if param_count != -1 and param_count != arg_count:
-				expr = (ERROR, 'Incorrect number of arguments passed to application: '+ str(def_id))
+				# get closure like call to display
+				expr = (ERROR, 'Incorrect number of arguments passed to application: ( '\
+						+ str(def_id) + ' ' + str(closure)[1:])
 			elif def_id in controls:
 				# if a control structure, add arguments to bindings				
 				for i in range(0, arg_count):
@@ -782,9 +806,6 @@ def evaluate(root, bindings):
 		expr = eval_builtin(root, bindings)
 	elif tag == BUILTIN: # if builtin, evaluate
 		expr = eval_builtin(value, bindings)
-	elif tag == ERROR:
-		print(tag + str(value))
-		expr = None
 	#else error		
 	return expr
  
