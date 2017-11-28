@@ -16,7 +16,6 @@ DEBUG = True
 HELP = file(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
 SYNTAX = file(os.path.dirname(os.path.abspath(__file__))+"/SYNTAX").read()
 SRC_DIR = '' # dir of root script 
-sys.setrecursionlimit(1000)
 
 '''
 AST Node Tags
@@ -47,10 +46,10 @@ ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 TYPE 	= 'TYPE'
 
-types = ['int', 'float', 'list', 'bool']
-keywords = ['*','/', '%','+', '-','<', '>', 'eq', 'and','or','not', \
-			'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold']
-controls = ['if', 'import']
+keywords = ['*','/', '%','+', '-','<', '>', 'eq', 'and','or','not', 'type', \
+			'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold',\
+			 'int', 'float', 'string', 'list', 'bool']
+controls = ['if', 'import', 'exit', 'while', 'set']
 
 #------------------------Repl--------------------------#
 def main(args):
@@ -175,9 +174,7 @@ class Lexer:
 					def_id += self.input[i]
 					i+=1
 				if def_id in keywords or def_id in controls:
-					token = (KEYWORD, def_id)
-				elif def_id  in types:
-					token = (TYPE, def_id)				
+					token = (KEYWORD, def_id)			
 				else:
 					token = (ID, def_id)
 				
@@ -247,8 +244,7 @@ def parse(lexer):
 			done = True	
 		elif tag != COMMENT: # ignore comments
 			ast.append(parse_expr(lexer))
-		tag, value = lexer.peek()	
-				
+		tag, value = lexer.peek()		
 	return ast
 
 def parse_expr(lexer):
@@ -258,14 +254,13 @@ def parse_expr(lexer):
 		(ID  str)
 		(FLOAT  float)
 		(KETYWORD  str)
-		(TYPE  str)
 		(STRING str)
 		(LIST  [<expr> ...])
 		(LAMBDA  [params .. ] <expr>)
 	'''
 	tag, value = lexer.next()
 	root = None
-	if tag in [TYPE, KEYWORD, ID, FLOAT, INT, STRING]: # if ID or Float or ...
+	if tag in [KEYWORD, ID, FLOAT, INT, STRING]: # if ID or Float or ...
 		 # eat token
 		root = (tag, value)
 		# return 
@@ -516,6 +511,8 @@ def eval_type(bindings):
 		expr = 'list'
 	elif isinstance(expr, bool):
 		expr = 'bool'
+	elif isinstance(expr, str):
+		expr = 'string'
 	return expr
 
 
@@ -528,14 +525,85 @@ def eval_print(bindings):
 		for e in expr:	
 			s += str(e) + ' '
 		expr = s+']'
-	print(expr)
+	print(evaluate(expr, bindings))
 	return expr
+
+
+def eval_int(bindings):
+	expr = None
+	try :
+		expr = int(evaluate(bindings['0'], bindings))
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (int <Int|Float|String> <Int|Float|String>)')		
+	return expr 
+
+def eval_float(bindings):
+	expr = None
+	try :
+		expr = float(evaluate(bindings['0'], bindings))
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String> <Int|Float|String>)')		
+	return expr 
+
+def eval_bool(bindings):
+	expr = None
+	try :
+		expr = evaluate(bindings['0'], bindings)
+		if expr != 0:
+			expr = 'true'
+		elif expr != 'true':
+			expr = 'false'
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String> <Int|Float|String>)')		
+	return expr 
+
+def eval_string(bindings):
+	expr = None
+	try :
+		value  = evaluate(bindings['0'], bindings)
+		if isinstance(value, list):
+			expr = ''
+			for e in value:
+				expr+=str(e)
+		else:
+			expr = str(value)
+	except:
+		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String|List> <Int|Float|String|List>)')		
+	return expr 
+
+def eval_list(bindings):
+	# do not evaluate !
+	expr = []
+	i = 0
+	s = '0'
+	while bindings.has_key(s): 
+		expr.append(bindings[s])
+		i+=1
+		s = str(i)
+	return expr 
 
 def eval_exit(bindings):
 	sys.exit(evaluate(bindings['0'], bindings))
 
+
+def eval_set(bindings):
+	# Lazy set!
+	var = bindings['0']
+	expr = None
+	if isinstance(var, tuple) and var[0] == ID:
+		if bindings.has_key(var[1]):
+			#expr = bindings[var[1]] = bindings['1']
+			expr = bindings[var[1]] = evaluate(bindings['1'], bindings) # strict evaluation, update var
+		else:
+			expr = (ERROR, 'Could not set: ' + str(var[1]) + ' not defined')			
+	else:
+		expr = (ERROR, 'Invalid Operands: Expected  (set <id> <expr>)')		
+	return expr
+
+
 def eval_if(bindings):
 	cond = evaluate(bindings['0'], bindings)	
+	expr = None
 	if cond != 'false' and (cond == 'true' or cond != 0) :
 		# if error
 		if isinstance(cond, tuple) and cond[0] == ERROR:
@@ -546,6 +614,19 @@ def eval_if(bindings):
 	else:
 		# evaluate false expr
 		expr = evaluate(bindings['2'], bindings)	
+	return expr
+	
+
+def eval_while(bindings):
+	cond_expr = bindings['0']		
+	body = bindings['1']	
+	expr = None
+	cond = 'true'
+	while cond != 'false' and (cond == 'true' or cond != 0) :
+		cond = evaluate(cond_expr, bindings)
+		expr = evaluate(body, bindings)
+		if isinstance(expr, tuple) and expr[0] == ERROR:
+			return expr 
 	return expr
 	
 
@@ -716,6 +797,8 @@ def eval_fold(bindings):
 builtins = {
 	# control
 	'if'	:(eval_if, 3),	
+	'set'	:(eval_set, 2),	
+	'while'	:(eval_while, 2),	
 	'import':(eval_import,1),
 	'exit':(eval_exit,1),
 	# operators
@@ -735,8 +818,13 @@ builtins = {
 	'type'	:(eval_type,1),
 	# utilities
 	'print'	:(eval_print,1 ),
-	'range':(eval_range,2),
+	'int'	:(eval_int, 1),
+	'float'	:(eval_float, 1),
+	'string'	:(eval_string, 1),
+	'bool'	:(eval_bool, 1),
+	'list'	:(eval_list, -1),
 	# list utils
+	'range':(eval_range,2),
 	'head' :(eval_head, 1),
 	'tail' :(eval_tail, 1),
 	'reverse':(eval_reverse, 1),
@@ -798,11 +886,10 @@ def evaluate(root, bindings):
 			closure = evaluate(def_id, bindings)
 		# if not an application, and not user defined, request builtin closure def
 		elif def_id not in bindings:
-			# get builtin closure 
 			closure = evaluate((KEYWORD, def_id), bindings)
 		# get the closure to be called
 		else:
-			closure = bindings[def_id]
+			closure = bindings[def_id]	
 		# if closure was found 
 		if isinstance(closure, Closure):
 			arg_count= len(args)
@@ -864,8 +951,6 @@ def evaluate(root, bindings):
 		expr = str(value)
 	elif tag == KEYWORD: #if keyword, get builtin definition
 		expr = eval_builtin(root, bindings)
-	elif tag == TYPE:	
-		expr = value
 	elif tag == BUILTIN: # if builtin, evaluate
 		expr = eval_builtin(value, bindings)
 	#else error		
