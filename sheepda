@@ -759,7 +759,7 @@ def eval_filter(bindings):
 		# eval args at call scope, [x y] should not refer to \x y . in abstactions
 		for elem in list_arg:
 			# set only param to elem in list
-			closure.bindings[closure.params[0]] = evaluate(elem,bindings) # set param to element
+			closure.bindings[closure.params[0]] = evaluate(elem, bindings) # set param to element
 			result = evaluate(closure.expr, closure.bindings)
 			if isinstance(result, tuple) and result[0] == ERROR:
 				return result # get error!
@@ -781,7 +781,7 @@ def eval_fold(bindings):
 		or not list_arg or not isinstance(list_arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (fold <abstraction> <initial> <list>)') 
 	elif closure.param_count != 2:
-		expr = (ERROR, 'Invalid abstraction Parameters: Expected 2 parameters in (reduce <abstraction> <initial> <list>)') 
+		expr = (ERROR, 'Invalid abstraction Parameters: Expected 2 parameters in (fold <abstraction> <initial> <list>)') 
 	else:	
 		# get locals
 		# eval last two first!
@@ -789,8 +789,8 @@ def eval_fold(bindings):
 		# eval args at call scope, [x y] should not refer to \x y . in abstactions
 		result =  evaluate(intial, bindings)
 		while i >= 0:
-			local_bindings[closure.params[0]] = evaluate(list_arg[i],bindings)
-			local_bindings[closure.params[1]] = result
+			closure.bindings[closure.params[0]] = evaluate(list_arg[i], bindings)
+			closure.bindings[closure.params[1]] = result
 			result = evaluate(closure.expr, closure.bindings)	
 			if isinstance(result, tuple) and result[0] == ERROR:
 				return result # get error!
