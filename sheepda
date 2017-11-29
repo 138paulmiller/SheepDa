@@ -76,7 +76,7 @@ def main(args):
 				# delete all user defined bindings
 				bindings.clear() 
 			else:
-				exprs = interpret(source, bindings, is_repl=True)						
+				interpret(source, bindings, is_repl=True)						
 			source = input('@>')			
 		print('Goodbye') 
 
@@ -96,16 +96,17 @@ def interpret(source, bindings, is_file=False, is_repl =False):
 	lexer = Lexer(source)
 	# generate ast [expr ... ]
 	ast = parse(lexer)
-	exprs = []		
+	#exprs = []		
 	# evaluate each expr in ast
 	for node in ast:
 		expr = evaluate(node, bindings)
-		exprs.append(expr)	
+		#exprs.append(expr)	
 		if isinstance(expr, tuple) and expr[0] == ERROR:
-			print(ERROR + ' ' + expr[1])	
+			print(ERROR + ' ' + expr[1])
+			break
 		elif is_repl:
 			print expr
-	return exprs
+
 
 #------------------------Lexer --------------------------#	
 class Lexer:
@@ -704,42 +705,38 @@ def eval_map(bindings):
 	# added result to list thats returned
 	expr = None
 	closure = None
-	args = []
+	list_args = []
 	list_size = 0
-	local_bindings = {}
 	if bindings.has_key('0'):
 		closure = bindings['0']
 	if not closure or not isinstance(closure, Closure):
-		expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
-	else:
-		for local in bindings.keys():
-			local_bindings[local] = bindings[local]
+		expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 	
 	# get all args
 	i = 1 #list args		
 	while bindings.has_key(str(i)) and not expr: 
-		args.append(bindings[str(i)])
+		list_args.append(bindings[str(i)])
 		if list_size is 0:
-			list_size = len(args[-1])
-		elif not list_size is len(args[-1]):	
+			list_size = len(list_args[-1])
+		elif not list_size is len(list_args[-1]):	
 		  	expr = (ERROR, 'All list arguments must be of equal length: Expected (map <abstraction> <list> ...)') 
-		elif not isinstance(args[-1], list):
+		elif not isinstance(list_args[-1], list):
 			expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
 		i += 1
 	# see if len(args) matches len of closure, if variable args, just pass
 	if not expr:
-		if closure.param_count != -1 and len(args) != closure.param_count:
-		 	expr = (ERROR, 'Incorrect number of lists passed to application in (map <abstraction> <list> ...)') 		
+		if closure.param_count != -1 and len(list_args) != closure.param_count:
+		 	expr = (ERROR, 'Invalid Abstraction: Must be a parameter for each list : (map <abstraction> <list> ...)') 		
 		else:
 			i = 0 # cur eval element
 			expr = []	
 			# var args 
 			while i < list_size:				
+				# eval args at call scope, [x y] should not refer to \x y . in abstactions
 				for j in range(0, len(closure.params)):
-					local_bindings[closure.params[j]] = args[j][i]
-				result = evaluate(closure.expr, local_bindings)
+					closure.bindings[closure.params[j]] = evaluate(list_args[j][i],bindings)
+				result = evaluate(closure.expr, closure.bindings)
 				if isinstance(result, tuple ) and result[0] == ERROR:
-					expr = result
-					i = list_size # end loop
+					return result # get error
 				else:
 					expr.append( result)
 				i += 1
@@ -751,6 +748,23 @@ def eval_filter(bindings):
 	# each elem is passed to closure that should except one param 
 	# and return cond if true add elem to list thats returned
 	expr = []
+	# get closure
+	closure = evaluate(bindings['0'], bindings)
+	list_arg = evaluate(bindings['1'], bindings)
+	if not isinstance(closure, Closure) or not isinstance(list_arg, list):
+		expr = (ERROR, 'Invalid Operands: Expected (filter <cond-abstraction> <list>)') 	
+	elif closure.param_count != 1:
+		expr = (ERROR, 'Invalid Abstraction: Must only have a single parameter')
+	else:
+		# eval args at call scope, [x y] should not refer to \x y . in abstactions
+		for elem in list_arg:
+			# set only param to elem in list
+			closure.bindings[closure.params[0]] = evaluate(elem,bindings) # set param to element
+			result = evaluate(closure.expr, closure.bindings)
+			if isinstance(result, tuple) and result[0] == ERROR:
+				return result # get error!
+			elif result != 'false' and result != 0:
+				expr.append(elem)
 	return expr
 
 
@@ -759,16 +773,10 @@ def eval_fold(bindings):
 	# folds right! to fold left, reverse list! 
 	# (fold + x [1 2 3 4]) = (+ 1 (+ 2( + 3 (+ 4 x))))
 	expr = None
-	intial = None
-	list_arg = None
-	closure = None
 	local_bindings = {}
-	if bindings.has_key('0'):
-		closure = bindings['0']
-	if bindings.has_key('1'):
-		intial = bindings['1']
-	if bindings.has_key('2'):
-		list_arg = bindings['2']
+	closure = bindings['0']
+	intial = bindings['1']
+	list_arg = bindings['2']
 	if not closure or not isinstance(closure, Closure) \
 		or not list_arg or not isinstance(list_arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (fold <abstraction> <initial> <list>)') 
@@ -776,16 +784,16 @@ def eval_fold(bindings):
 		expr = (ERROR, 'Invalid abstraction Parameters: Expected 2 parameters in (reduce <abstraction> <initial> <list>)') 
 	else:	
 		# get locals
-		for local in bindings.keys():
-			local_bindings[local] = bindings[local]
 		# eval last two first!
 		i = len(list_arg)-1 
-		# eval at call scope, [x y] should not refer to \x y . in abstactions
+		# eval args at call scope, [x y] should not refer to \x y . in abstactions
 		result =  evaluate(intial, bindings)
 		while i >= 0:
 			local_bindings[closure.params[0]] = evaluate(list_arg[i],bindings)
 			local_bindings[closure.params[1]] = result
-			result = evaluate(closure.expr, local_bindings)
+			result = evaluate(closure.expr, closure.bindings)	
+			if isinstance(result, tuple) and result[0] == ERROR:
+				return result # get error!
 			i-=1			
 		expr = result	
 	return expr
@@ -832,6 +840,7 @@ builtins = {
 	'fold':(eval_fold,3),
 	'map':(eval_map,-1) 
 }
+
 def eval_builtin(root, bindings):
 	expr = None
 	#if def_id then requesting closure definition
