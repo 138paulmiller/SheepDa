@@ -15,7 +15,6 @@ VERSION = 0.1
 DEBUG = True
 HELP = file(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
 SYNTAX = file(os.path.dirname(os.path.abspath(__file__))+"/SYNTAX").read()
-SRC_DIR = '' # dir of root script 
 
 '''
 AST Node Tags
@@ -64,12 +63,17 @@ def main(args):
 		elif args[0] == '-s':
 			print(SYNTAX)
 		else:
-			global SRC_DIR
-			SRC_DIR = os.path.dirname(os.path.abspath(args[0]))
 			interpret(args[0], bindings, True) # interp file
 	else: # repl
-		source = input('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help\n\n@>')		
+		print('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help')		
+
+		history = [] # stack of previous entered commands unlimited??
+		source = ''
+		cur = 0
 		while source != 'quit' :
+			source = input('@>')
+			history.append(source)
+			cur += 1
 			if source == 'help':
 				print(HELP)
 			elif source == 'unbind':
@@ -77,15 +81,13 @@ def main(args):
 				bindings.clear() 
 			else:
 				interpret(source, bindings, is_repl=True)						
-			source = input('@>')			
 		print('Goodbye') 
 
 
 def interpret(source, bindings, is_file=False, is_repl =False):
 	if is_file:
 		try:			
-			global SRC_DIR
-			source = SRC_DIR +'/'+ os.path.basename(source)
+			source = os.path.abspath(source)
 			# open file with its absolute path
 			source = file(source).read()
 		except:
@@ -98,12 +100,15 @@ def interpret(source, bindings, is_file=False, is_repl =False):
 	ast = parse(lexer)
 	#exprs = []		
 	# evaluate each expr in ast
-	for node in ast:
+
+	for node in ast:		
 		expr = evaluate(node, bindings)
 		#exprs.append(expr)	
-		if isinstance(expr, tuple) and expr[0] == ERROR:
-			print(ERROR + ' ' + expr[1])
-			break
+		if isinstance(expr, tuple):						
+			if expr[0] == ERROR:
+				print(ERROR + ' ' + expr[1])
+				break
+		# print only expr(non-tokens  or nontuples)
 		elif is_repl:
 			print expr
 
@@ -130,10 +135,15 @@ class Lexer:
 		  self.input[self.pos] == '\t' or \
 		  self.input[self.pos] == '\n'):
 			self.pos+=1
+		# eat comment
+		while self.pos < self.len and self.input[self.pos] == ';':
+			while self.pos < self.len and self.input[self.pos] != '\n':
+				self.pos += 1
+			self.pos += 1
+
 		if self.pos >= self.len:
 			token = (EOI, 'End of Input')
 		else:
-			
 			sym = self.input[self.pos]
 			if  sym == '(':
 				token = (LPAREN,sym )
@@ -162,12 +172,6 @@ class Lexer:
 					token = (STRING, string)
 				else:
 					token = (ERROR, 'Missing closing quote')
-			elif sym == ';':
-				comment = ''
-				while self.pos < self.len and self.input[self.pos] != '\n':
-					comment += self.input[self.pos]
-					self.pos += 1
-				token = (COMMENT, comment) 
 			elif sym.isalpha(): # id
 				def_id = sym
 				i = self.pos+1
@@ -200,7 +204,7 @@ class Lexer:
 				else: # subtraction operator 	
 					token = (KEYWORD, sym)
 			else:
-				token = (ERROR, 'Unknown Token: ' + self.input[self.pos])		
+				token = (ERROR, self.input[self.pos])		
 		self.cur_token = token		
 		return token									
 
@@ -211,8 +215,11 @@ class Lexer:
 			if token[0] != ERROR:
 				# offset input by token lexeme len
 				self.pos += len(token[1])
-				if token[0] == STRING: #offset for both quotes read but not captured
+				if token[0] == STRING : #offset for both quotes read but not captured
 					self.pos += 2
+				if token[0] == ERROR:
+					token[1] = 'Unknown Token: ' + token[1] 
+				
 		else:
 			token = (ERROR, ' Unexpected NULL Token') 
 		return token
@@ -239,11 +246,11 @@ def parse(lexer):
 			else: # standalone def_id
 				ast.append(def_id)
 		elif tag == ERROR:
-			done = True
+			done = True 
 			ast.append((tag,value))
 		elif tag == EOI:
 			done = True	
-		elif tag != COMMENT: # ignore comments
+		else:
 			ast.append(parse_expr(lexer))
 		tag, value = lexer.peek()		
 	return ast
@@ -312,7 +319,7 @@ def parse_expr(lexer):
 			root = (ERROR, 'Missing closing list bracket')
 		else:
 			root = (tag, value)
-	elif tag == COMMENT or tag == ERROR:
+	elif tag == ERROR:
 		root = tag, value
 	else:
 		root = (ERROR, 'Unexpected :'+ value)
@@ -360,6 +367,7 @@ class Closure:
 def eval_add(bindings):
 	left = bindings['0']
 	right = bindings['1']
+	expr = None
 	try:			
 		if isinstance(left, str):
 			right = str(right)
@@ -367,26 +375,33 @@ def eval_add(bindings):
 			left = str(left)
 		expr = left + right
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)')						 			
+		expr = (ERROR, 'Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)')
 	return expr
 
 def eval_sub(bindings):
 	left = bindings['0']
 	right = bindings['1']
+	expr = None
 	try:	
 		# if either operands are strings, get the intersection of the two
 		if isinstance(left, str) or isinstance(right, str):
 			if right == None:
 				expr = left
 			else:
-				expr = str(left).replace( str(right), '')	
+				expr = str(left).replace( str(right), '')			
+		elif isinstance(left, list) or isinstance(right, list):# get set difference
+			expr = []
+			for e in left:
+				if not e in right:
+					expr.append(e) 
 		else:
 			expr = left - right		
 	except:
-		expr = (ERROR, 'Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)')						 			
+		expr = (ERROR, 'Invalid Operands:Expected (- <Int|Float|String> <Int|Float|String>)')
 	return expr
 
 def eval_mul(bindings):
+	# performs multiplication, or kleene start of string and list if second param is int
 	left = bindings['0']
 	right = bindings['1']
 	expr = None
@@ -399,9 +414,9 @@ def eval_mul(bindings):
 				if 	i < len(right):
 					expr += right[i]
 		else:
+			# kleene start
 			expr = ''
 			i = 0
-			# too large for range
 			while i < int(right):
 				expr += left
 				i+=1		
@@ -413,6 +428,7 @@ def eval_mul(bindings):
 	return expr						
 
 def eval_div(bindings):
+	# performs division, or set intersection of string
 	left = bindings['0']
 	right = bindings['1']
 	try:
@@ -526,7 +542,7 @@ def eval_print(bindings):
 		for e in expr:	
 			s += str(e) + ' '
 		expr = s+']'
-	print(evaluate(expr, bindings))
+	print(expr)
 	return expr
 
 
@@ -635,6 +651,7 @@ def eval_import(bindings):
 	source = evaluate(bindings['0'], bindings)
 	# interpret the file
 	expr =  interpret(source, bindings, True)
+
 	if not isinstance(expr, tuple) or not expr[0] == ERROR:
 		expr = 'true'
 	return expr
@@ -860,6 +877,7 @@ def eval_builtin(root, bindings):
 	elif root[0] == ERROR:
 		expr = root
 	else: 
+		
 		expr= builtins[root][0](bindings)	
 	return expr
 
@@ -867,6 +885,7 @@ def eval_builtin(root, bindings):
 def evaluate(root, bindings):
 	expr = root # evaluated expression
 	tag, value = (None, None)
+
 	try:
 		tag, value = root
 	except:
@@ -877,7 +896,9 @@ def evaluate(root, bindings):
 			print(value[0], "Already exists!")
 			expr = None	
 		else:
+			#expr = value[1] # non-strict is slower! 
 			expr = evaluate(value[1], bindings)
+
 			if not isinstance(expr, tuple) or not expr[0] == ERROR:
 				bindings[value[0]] = expr # is not error, bind
 	elif tag == CLOSURE:
@@ -898,7 +919,8 @@ def evaluate(root, bindings):
 			closure = evaluate((KEYWORD, def_id), bindings)
 		# get the closure to be called
 		else:
-			closure = bindings[def_id]	
+			#closure = evaluate(bindings[def_id], bindings)	# nonstrict is slower!
+			closure = bindings[def_id]		
 		# if closure was found 
 		if isinstance(closure, Closure):
 			arg_count= len(args)
@@ -907,13 +929,15 @@ def evaluate(root, bindings):
 			if param_count != -1 and param_count != arg_count:
 				# get closure like call to display
 				expr = (ERROR, 'Incorrect number of arguments passed to application: ( '\
-						+ str(def_id) + ' ' + str(closure)[1:])
-			elif def_id in controls:
-				# if a control structure, add arguments to bindings				
-				for i in range(0, arg_count):
-					# do not evaluate args in control structure
-					bindings[params[i]] = args[i] 	
-				expr = eval_builtin(def_id,  bindings)			
+						+ str(def_id) + ' ' + str(closure)[1:])			
+			elif def_id in controls: # do not eval
+				local_bindings	= {}
+				# bind all arguments to closures local bindings
+				if def_id in controls: # do not eval
+					for i in range(0, arg_count):
+						bindings[params[i]] = args[i] 
+				expr = eval_builtin(def_id, bindings)
+							
 			else:
 				# if a application closure
 				local_bindings	= {}
@@ -944,7 +968,8 @@ def evaluate(root, bindings):
 				expr = (ERROR, 'Application is not defined: ' + str(def_id))
 	elif tag == ID:
 		if value in bindings:
-			expr = bindings[value] 			
+			#expr = evaluate(bindings[value], bindings) # nonstrict is slower!
+	 		expr = bindings[value] 			
 		else:
 			expr = (ERROR, str(tag) + ' ' + str(value) + " not defined in this scope")
 	elif tag == LIST:
