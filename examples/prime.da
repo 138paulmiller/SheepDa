@@ -1,21 +1,21 @@
-divisible = \num divisor . 
+divisible = (\num divisor . 
 		( if 	(< divisor (root num 2))
 				(if 	(eq (% num divisor) 0) 
 						true 
 						(divisible num (+ divisor 1))) 
-					false)
+					false))
 
-is_prime = \num . 
-			(divisible num 2)
+is_prime = (\num . 
+			(divisible num 2))
 
 
-print_primes =  \ start end . 
+print_primes =  (\ start end . 
 				(if (< start end)
 						(and 
 							(if (is_prime start) 
 								(print start) 
 								false) 						 
 							(print_primes (+ start 1) end)) 	
-					0)
+					0))
 
 (print_primes 0 100)

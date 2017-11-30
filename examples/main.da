@@ -1,4 +1,4 @@
-(import "ex_dir/fun.da")
+(import "examples/fun.da")
 (print f)
 ; Run from outside ex_dir sheepda ex_dir/main.da
 (print ((f 2.0) 10000 ) )

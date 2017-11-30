@@ -1,11 +1,11 @@
 
-a = \ x y.
-		\w z.
-			(w z (+ y x))
+a = (\ x y.
+		(\w z.
+			(w z (+ y x))))
 
-b = \x y.
-		\z.
-			(- z (* y x))
+b = (\x y.
+		(\z.
+			(- z (* y x))))
 
 x =  (a 2 1)
 y = (x + 5)
@@ -17,10 +17,10 @@ f = (e 30)
 
 g = ((b 3 5) 20)
 (print g)
-t = \ x y. 
+t = (\ x y. 
 		(if x
-			(print ( t (- x 1 ) (+ y 1))
-			y)
+			(print ( t (- x 1 ) (+ y 1)))
+			y))
 (t 3 0)
 
 

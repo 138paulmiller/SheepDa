@@ -1,11 +1,9 @@
 ; Examples of closures, dynamic binding, static scoping and builtin operators
 
+
 ; Defines x to be a closure that accepts one parameter and returns another closure that accepts two parameter
 ; Calling (x "value") will bind the parameter x to be "value" when evaluating the inner closure, so x => "value"
-x = \ x. 
-	\ a b .
-		(x a b )
-
+x = (\ x. (\ a b .(x a b )))
 
 ; Adding strings to other strings and numbers
 (print ((x +) "hello" " world"))

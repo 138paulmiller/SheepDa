@@ -1,8 +1,8 @@
 ; Compute factorial
-fac = \ x . 
+fac = (\ x . 
 		(if x 
 			(* (fac (- x 1)) x)
-			 1)
+			 1))
 
 (print (fac 3)) 
 (print (fac 10)) 

@@ -130,22 +130,25 @@ class Lexer:
 			return self.cur_token
 		token = None
 		# eat whitespace
+		skip = True
+		
 		while self.pos < self.len and  \
 		  (self.input[self.pos] == ' '  or \
 		  self.input[self.pos] == '\t' or \
 		  self.input[self.pos] == '\n'):
-			self.pos+=1
-		# eat comment
-		while self.pos < self.len and self.input[self.pos] == ';':
-			while self.pos < self.len and self.input[self.pos] != '\n':
-				self.pos += 1
-			self.pos += 1
+			self.pos+=1	
 
 		if self.pos >= self.len:
 			token = (EOI, 'End of Input')
 		else:
 			sym = self.input[self.pos]
-			if  sym == '(':
+			if sym == ';':
+				# eat comment
+				while self.pos < self.len and self.input[self.pos] != '\n':
+					self.pos += 1
+				self.pos += 1 # eat newline
+				token = self.peek() # return new token	
+			elif  sym == '(':
 				token = (LPAREN,sym )
 			elif sym == ')':
 				token = (RPAREN, sym)
@@ -272,40 +275,46 @@ def parse_expr(lexer):
 		 # eat token
 		root = (tag, value)
 		# return 
-	elif tag == LAMBDA: # if abstraction
-		bindings = [] #  bound parameter ids
-		# get next, must be either def_id or dot
-		tag, value = lexer.next()
-		# get all following def_id values (ids)
-		while tag == ID:
-			bindings.append(value)
-			tag, value = lexer.next()
-		if tag == DOT:
-			root = (CLOSURE, (bindings, parse_expr(lexer)))
-		else:
-			root = (ERROR, 'Expected ' + DOT + ' at: ' + value)
 	elif tag == LPAREN: # if application
 		# apply first expression to all expressions until rparen
 		expr = None 
-		def_id = parse_expr(lexer)
-		if def_id[0] != ID and def_id[0] != KEYWORD:
-		 	expr = def_id
-		else:
-		 	expr = def_id[1]
-		args = []
-		# eat lparen
 		tag, value = lexer.peek()
-		while tag != RPAREN and tag != ERROR and tag != EOI:	
-			args.append(parse_expr(lexer))
-			tag, value = lexer.peek()
-		if tag == ERROR:
-			root = tag, value
-		elif tag == EOI:
-			root = (ERROR, 'Missing Closing Parentheses!')		
+		if tag == LAMBDA:
+			lexer.next();
+			params = [] #  bound parameter ids
+			# get next, must be either def_id or dot
+			tag, value = lexer.next()
+			# get all following def_id values (ids)
+			while tag == ID:
+				params.append(value)
+				tag, value = lexer.next()
+			if tag == DOT:
+				root = (CLOSURE, (params, parse_expr(lexer)))
+				tag, value = lexer.next()
+				if tag != RPAREN:
+					root = (ERROR, 'Missing Closing Parentheses!')		
+			else:
+				root = (ERROR, 'Expected ' + DOT + ' at: ' + value)
 		else:
-			#eat rparen
-			lexer.next()
-			root = (APPLY, (expr, args))
+			def_id = parse_expr(lexer)
+			if def_id[0] != ID and def_id[0] != KEYWORD:
+			 	expr = def_id	
+			else:
+			 	expr = def_id[1]
+			args = []
+			# eat lparen
+			tag, value = lexer.peek()
+			while tag != RPAREN and tag != ERROR and tag != EOI:	
+				args.append(parse_expr(lexer))
+				tag, value = lexer.peek()
+			if tag == ERROR:
+				root = tag, value
+			elif tag == EOI:
+				root = (ERROR, 'Missing Closing Parentheses!')		
+			else:
+				#eat rparen
+				lexer.next()
+				root = (APPLY, (expr, args))
 	elif tag == LBRACK: 
 		exprs = []
 		tag, value = lexer.peek()
@@ -324,6 +333,7 @@ def parse_expr(lexer):
 	else:
 		root = (ERROR, 'Unexpected :'+ value)
 	return root
+
 
 #------------------------Closure --------------------------#
 class Closure:
@@ -349,19 +359,10 @@ class Closure:
 
 
 	def __repr__(self):
-		s = '('
-		for p in self.params:
-			# print a b c as param ids even though they are 0 1 2 	
-			if p.isdigit():	
-				s+= str(chr(ord('a')+int(p))) + ' '
-			else:
-				s += p + ' '
-		s += ')'
-			
 		# s += ')\n\tBINDINGS: '
 		# for def_id, value in self.bindings.items():
 		# 	s += '\n\t\t' + def_id + ': ' + str(value) 
-		return  s
+		return  str(self.params)
 	
 #------------------------Evaluate Builtins--------------------------#
 def eval_add(bindings):
@@ -534,7 +535,7 @@ def eval_type(bindings):
 
 
 def eval_print(bindings):
-	expr = bindings['0']
+	expr = evaluate(bindings['0'],bindings)
 	if isinstance(expr, tuple) and expr[0] == ERROR:
 		return expr 
 	elif isinstance(expr, list):
@@ -815,12 +816,13 @@ def eval_fold(bindings):
 		expr = result	
 	return expr
 
+
 '''
 	Builtin Evaluate Action Table	
 	symbol : (function(bindings), paramcount)
 '''
 builtins = {
-	# control
+	# control (special form)
 	'if'	:(eval_if, 3),	
 	'set'	:(eval_set, 2),	
 	'while'	:(eval_while, 2),	
@@ -842,6 +844,7 @@ builtins = {
 	'not'	:(eval_not,1),
 	'type'	:(eval_type,1),
 	# utilities
+
 	'print'	:(eval_print,1 ),
 	'int'	:(eval_int, 1),
 	'float'	:(eval_float, 1),
@@ -976,7 +979,8 @@ def evaluate(root, bindings):
 		# eval all exprs into list object
 		expr = []
 		for arg in value:
-			expr.append(evaluate(arg, bindings))
+			#expr.append(evaluate(arg, bindings))
+			expr.append(arg) # nonstrict
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
