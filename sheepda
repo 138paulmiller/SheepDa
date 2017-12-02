@@ -375,6 +375,7 @@ class Closure:
 def eval_add(bindings):
 	left = bindings['0']
 	right = bindings['1']
+	del bindings['0']; del bindings['1']
 	expr = None
 	try:			
 		if isinstance(left, str):
@@ -389,6 +390,7 @@ def eval_add(bindings):
 def eval_sub(bindings):
 	left = bindings['0']
 	right = bindings['1']
+	del bindings['0']; del bindings['1']
 	expr = None
 	try:	
 		# if either operands are strings, get the intersection of the two
@@ -413,7 +415,7 @@ def eval_mul(bindings):
 	left = bindings['0']
 	right = bindings['1']
 	expr = None
-
+	del bindings['0']; del bindings['1']
 	if  isinstance(left,str):
 		if isinstance(right, str):
 			expr = ''
@@ -439,6 +441,7 @@ def eval_div(bindings):
 	# performs division, or set intersection of string
 	left = bindings['0']
 	right = bindings['1']
+	del bindings['0']; del bindings['1']
 	try:
 		if isinstance(left, str):	
 		# get the intersection!
@@ -459,64 +462,101 @@ def eval_div(bindings):
 def eval_mod(bindings):
 	left = bindings['0']
 	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	expr = None
 	try:
-		expr = left % right	
+		expr = evaluate(left,bindings) % evaluate(right,bindings)	
 	except:
 		expr = (ERROR, 'Invalid Operands: Expected  (% <Int|Float> <Int>)')
 	return expr							
 
 
 def eval_root(bindings):
+	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	expr = None
 	# take a square root, cube root, etc
 	try:
-		expr = evaluate(bindings['0'], bindings) ** (1.0/evaluate(bindings['1'], bindings))
-
+		expr = evaluate(left, bindings) ** (1.0/evaluate(right, bindings))
 	except:
 		expr = (ERROR, 'Invalid Operands: Expected  (root <Int|Float> <Int|Float>)')		
 	return expr
 
 def eval_exp(bindings):
+	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	expr = None
+	# take a square root, cube root, etc
 	try:
-		expr = evaluate(bindings['0'], bindings) ** (evaluate(bindings['1'], bindings))
+		expr = evaluate(left, bindings) ** (evaluate(right, bindings))
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (exp <Int|Float> <Int|Float>)')		
+		expr = (ERROR, 'Invalid Operands: Expected  (root <Int|Float> <Int|Float>)')		
 	return expr
 
 def eval_not(bindings):
-	if not bindings['0']:
+	expr = bindings['0']
+	del bindings['0']
+	expr = evaluate(expr, bindings)
+	if not expr:
 		return  'true'
 	else:
 		return  'false'	
 
 def eval_lt(bindings):
-	if bindings['0'] < bindings['1']:
+	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	left = evaluate(left, bindings)
+	right = evaluate(right, bindings)
+	if left < right:
 		return  'true'
 	else:
 		return  'false'
 
 def eval_gt(bindings):
-	if bindings['0'] > bindings['1']:
+	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	left = evaluate(left, bindings)
+	right = evaluate(right, bindings)
+	if left > right:
 		return  'true'
 	else:
 		return  'false'
 
 def eval_eq(bindings):
-	if bindings['0'] == bindings['1']:
+	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	left = evaluate(left, bindings)
+	right = evaluate(right, bindings)
+	if left == right:
 		return  'true'
 	else:
 		return  'false'
 	
 def eval_and(bindings):
-	if bindings['0'] and bindings['1']:
+	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	left = evaluate(left, bindings)
+	right = evaluate(right, bindings)
+	if left and right:
 		return  'true'
 	else:
 		return  'false'
 
 def eval_or(bindings):
 	left = bindings['0']
+	right = bindings['1']
+	del bindings['0']; del bindings['1']
+	left = evaluate(left, bindings)
 	# lazy eval
-	if left:			
-		expr = left or bindings['1']
+	if left:		
+		right = evaluate(right, bindings)	
+		expr = left or right
 	else:
 		expr = left
 	if expr:
@@ -528,6 +568,8 @@ def eval_or(bindings):
 
 def eval_type(bindings):
 	expr = bindings['0']
+	del bindings['0']
+	expr = evaluate(left, bindings)
 	if isinstance(expr, int):
 		expr = 'int'
 	elif isinstance(expr, float):
@@ -542,7 +584,9 @@ def eval_type(bindings):
 
 
 def eval_print(bindings):
-	expr = evaluate(bindings['0'],bindings)
+	expr = bindings['0']
+	del bindings['0']
+	expr = evaluate(expr,bindings)
 	if isinstance(expr, tuple) and expr[0] == ERROR:
 		return expr 
 	elif isinstance(expr, list):
@@ -557,25 +601,28 @@ def eval_print(bindings):
 
 
 def eval_int(bindings):
-	expr = None
+	expr = bindings['0']
+	del bindings['0']
 	try :
-		expr = int(evaluate(bindings['0'], bindings))
+		expr = int(evaluate(expr, bindings))
 	except:
 		expr = (ERROR, 'Invalid Operands: Expected  (int <Int|Float|String> <Int|Float|String>)')		
 	return expr 
 
 def eval_float(bindings):
-	expr = None
+	expr = bindings['0']
+	del bindings['0']
 	try :
-		expr = float(evaluate(bindings['0'], bindings))
+		expr = float(evaluate(expr, bindings))
 	except:
 		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String> <Int|Float|String>)')		
 	return expr 
 
 def eval_bool(bindings):
-	expr = None
+	expr = bindings['0']
+	del bindings['0']
 	try :
-		expr = evaluate(bindings['0'], bindings)
+		expr = evaluate(expr, bindings)
 		if expr != 0:
 			expr = 'true'
 		elif expr != 'true':
@@ -585,9 +632,10 @@ def eval_bool(bindings):
 	return expr 
 
 def eval_string(bindings):
-	expr = None
+	expr = bindings['0']
+	del bindings['0']
 	try :
-		value  = evaluate(bindings['0'], bindings)
+		value  = evaluate(expr, bindings)
 		if isinstance(value, list):
 			expr = ''
 			for e in value:
@@ -610,17 +658,20 @@ def eval_list(bindings):
 	return expr 
 
 def eval_exit(bindings):
-	sys.exit(evaluate(bindings['0'], bindings))
+	return_expr = 	bindings['0']
+	del bindings['0'] # null args in case they are used
+	sys.exit(evaluate(return_expr, bindings))
 
 
 def eval_set(bindings):
 	# Lazy set!
 	var = bindings['0']
-	expr = None
+	expr = bindings['1']
+	del bindings['0']; del bindings['1']# null args in case they are used
 	if isinstance(var, tuple) and var[0] == ID:
 		if bindings.has_key(var[1]):
 			#expr = bindings[var[1]] = bindings['1']
-			expr = bindings[var[1]] = evaluate(bindings['1'], bindings) # strict evaluation, update var
+			expr = bindings[var[1]] = evaluate(expr, bindings) # strict evaluation, update var
 		else:
 			expr = (ERROR, 'Could not set: ' + str(var[1]) + ' not defined')			
 	else:
@@ -629,18 +680,22 @@ def eval_set(bindings):
 
 
 def eval_if(bindings):
-	cond = evaluate(bindings['0'], bindings)	
-	expr = None
-	if cond != 'false' and (cond == 'true' or cond != 0) :
+	cond = bindings['0']
+	true_expr = bindings['1']
+	false_expr = bindings['2']
+	expr = None		
+	del bindings['0']; del bindings['1']; del bindings['2'] # null args in case they are used
+	cond = evaluate(cond, bindings)
+	if cond != [] and cond != 'false' and (cond == 'true' or cond != 0) :
 		# if error
 		if isinstance(cond, tuple) and cond[0] == ERROR:
 			expr = cond	
 		else:
 			# evaluate true expr
-			expr = evaluate(bindings['1'], bindings)	
+			expr = evaluate(true_expr, bindings)	
 	else:
 		# evaluate false expr
-		expr = evaluate(bindings['2'], bindings)	
+		expr = evaluate(false_expr, bindings)	
 	return expr
 	
 
@@ -649,6 +704,7 @@ def eval_while(bindings):
 	body = bindings['1']	
 	expr = None
 	cond = 'true'
+	del bindings['0']; del bindings['1'] # null args in case they are used
 	while cond != 'false' and (cond == 'true' or cond != 0) :
 		cond = evaluate(cond_expr, bindings)
 		expr = evaluate(body, bindings)
@@ -658,7 +714,9 @@ def eval_while(bindings):
 	
 
 def eval_import(bindings):
-	source = evaluate(bindings['0'], bindings)
+	src_file = bindings['0']
+	del bindings['0']
+	source = evaluate(src_file, bindings)
 	# interpret the file
 	expr =  interpret(source, bindings, True)
 
@@ -670,13 +728,14 @@ def eval_range(bindings):
 	# return a list between given ranges
 	start = bindings['0']
 	end  = bindings['1']
+	del bindings['0']; del bindings['1'] # null args in case they are used
 	expr = []		
 	d = 1
 	try:
 		if not isinstance(start, int):
-			start = evaluate(bindings['0'], bindings) 	
+			start = evaluate(start, bindings) 	
 		if not isinstance(end, int):
-			end = evaluate(bindings['0'], bindings)
+			end = evaluate(end, bindings)
 		if start > end:
 			d = -1
 		while start != end:	
@@ -690,39 +749,36 @@ def eval_range(bindings):
 
 def eval_reverse(bindings):
 	#reverse a list
-	arg = None
 	expr = None
-	if bindings.has_key('0'):
-		arg =  bindings['0']
+	arg =  bindings['0']
+	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> ...)') 
 	else:
-		 expr = bindings['0'][::-1] #reverses list in pythonic way with slicing 
+		 expr = arg[::-1] #reverses list in pythonic way with slicing 
 	return expr
 
 def eval_head(bindings):
 	# return first element in list
 	arg = None
-	expr = None
-	if bindings.has_key('0'):
-		arg =  bindings['0']
+	arg =  bindings['0']
+	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> ...)') 
 	else:
 		# evaluate the elements value
-		expr = evaluate(bindings['0'][0],bindings) #reverses list in pythonic way with slicing 
+		expr = evaluate(arg[0],bindings) #reverses list in pythonic way with slicing 
 	return expr
 
 def eval_tail(bindings):
 	# return all but first elements in list
-	arg = None
 	expr = None
-	if bindings.has_key('0'):
-		arg =  bindings['0']
+	arg =  bindings['0']
+	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> ...)') 
 	else:
-		 expr = bindings['0'][1:] #reverses list in pythonic way with slicing 
+		 expr =argbindings['0'][1:] #reverses list in pythonic way with slicing 
 	return expr
 
 def eval_map(bindings):
@@ -731,11 +787,10 @@ def eval_map(bindings):
 	# each elem is passed to closure that should except one param for each list
 	# added result to list thats returned
 	expr = None
-	closure = None
 	list_args = []
 	list_size = 0
-	if bindings.has_key('0'):
-		closure = bindings['0']
+	closure = bindings['0']
+	del bindings['0'] # null args in case they are used
 	if not closure or not isinstance(closure, Closure):
 		expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 	
 	# get all args
@@ -776,8 +831,11 @@ def eval_filter(bindings):
 	# and return cond if true add elem to list thats returned
 	expr = []
 	# get closure
-	closure = evaluate(bindings['0'], bindings)
-	list_arg = evaluate(bindings['1'], bindings)
+	closure = bindings['0']
+	list_arg = bindings['1']
+	del bindings['0']; del bindings['1'] #disable in case they are used
+	closure = evaluate(closure, bindings)
+	list_arg = evaluate(list_arg, bindings)
 	if not isinstance(closure, Closure) or not isinstance(list_arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (filter <cond-abstraction> <list>)') 	
 	elif closure.param_count != 1:
@@ -804,6 +862,7 @@ def eval_fold(bindings):
 	closure = bindings['0']
 	intial = bindings['1']
 	list_arg = bindings['2']
+	bindings['0']=bindings['1']=bindings['2']=None #disable in case they are used
 	if not closure or not isinstance(closure, Closure) \
 		or not list_arg or not isinstance(list_arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (fold <abstraction> <initial> <list>)') 
@@ -908,8 +967,8 @@ def evaluate(root, bindings):
 			print(value[0], "Already exists!")
 			expr = None	
 		else:
-			expr = value[1] # non-strict is slower! 
-			#expr = evaluate(value[1], bindings)
+			#expr = value[1] # non-strict is slower! 
+			expr = evaluate(value[1], bindings)
 
 			if not isinstance(expr, tuple) or not expr[0] == ERROR:
 				bindings[value[0]] = expr # is not error, bind
@@ -940,8 +999,8 @@ def evaluate(root, bindings):
 			params = closure.params
 			if param_count != -1 and param_count != arg_count:
 				# get closure like call to display
-				expr = (ERROR, 'Incorrect number of arguments passed to application: ( '\
-						+ str(def_id) + ' ' + str(closure)[1:])			
+				expr = (ERROR, 'Incorrect number of arguments passed to application: '\
+						+ to_string(closure, bindings))			
 			elif def_id in controls: # do not eval
 				local_bindings	= {}
 				# bind all arguments to closures local bindings
@@ -960,7 +1019,6 @@ def evaluate(root, bindings):
 						for i in range(0, arg_count): 
 							local_bindings[str(param)] = args[i] 
 							param += 1	
-
 					expr = eval_builtin(def_id, local_bindings)			
 			else:
 				# if a application closure
