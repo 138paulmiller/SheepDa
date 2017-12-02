@@ -48,7 +48,7 @@ TYPE 	= 'TYPE'
 keywords = ['*','/', '%','+', '-','<', '>', 'eq', 'and','or','not', 'type', \
 			'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold',\
 			 'int', 'float', 'string', 'list', 'bool']
-controls = ['if', 'import', 'exit', 'while', 'set']
+controls = ['if', 'import', 'exit', 'while', 'set', 'list']
 
 #------------------------Repl--------------------------#
 def main(args):
@@ -66,12 +66,13 @@ def main(args):
 			interpret(args[0], bindings, True) # interp file
 	else: # repl
 		print('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help')		
-
 		history = [] # stack of previous entered commands unlimited??
 		source = ''
 		cur = 0
-		while source != 'quit' :
+		quit = False
+		while not quit :
 			source = input('@>')
+			
 			history.append(source)
 			cur += 1
 			if source == 'help':
@@ -79,6 +80,8 @@ def main(args):
 			elif source == 'unbind':
 				# delete all user defined bindings
 				bindings.clear() 
+			elif source == 'quit':
+				quit = True
 			else:
 				interpret(source, bindings, is_repl=True)						
 		print('Goodbye') 
@@ -110,7 +113,8 @@ def interpret(source, bindings, is_file=False, is_repl =False):
 				break
 		# print only expr(non-tokens  or nontuples)
 		elif is_repl:
-			print expr
+			
+			print (to_string(expr,bindings))
 
 
 #------------------------Lexer --------------------------#	
@@ -362,7 +366,10 @@ class Closure:
 		# s += ')\n\tBINDINGS: '
 		# for def_id, value in self.bindings.items():
 		# 	s += '\n\t\t' + def_id + ': ' + str(value) 
-		return  str(self.params)
+		s = '<proc:'
+		for p in self.params:
+			s += to_string(p,self.bindings)
+		return s + '>'
 	
 #------------------------Evaluate Builtins--------------------------#
 def eval_add(bindings):
@@ -541,10 +548,12 @@ def eval_print(bindings):
 	elif isinstance(expr, list):
 		s = '['
 		for e in expr:	
-			s += str(e) + ' '
+			s +=to_string(e,bindings) + ' '
 		expr = s+']'
+	else:
+		expr = to_string(expr,bindings)
 	print(expr)
-	return expr
+	return 'true' 
 
 
 def eval_int(bindings):
@@ -827,6 +836,7 @@ builtins = {
 	'set'	:(eval_set, 2),	
 	'while'	:(eval_while, 2),	
 	'import':(eval_import,1),
+	'list'	:(eval_list, -1),
 	'exit':(eval_exit,1),
 	# operators
 	'+'	:(eval_add, 2),
@@ -850,7 +860,6 @@ builtins = {
 	'float'	:(eval_float, 1),
 	'string'	:(eval_string, 1),
 	'bool'	:(eval_bool, 1),
-	'list'	:(eval_list, -1),
 	# list utils
 	'range':(eval_range,2),
 	'head' :(eval_head, 1),
@@ -899,8 +908,8 @@ def evaluate(root, bindings):
 			print(value[0], "Already exists!")
 			expr = None	
 		else:
-			#expr = value[1] # non-strict is slower! 
-			expr = evaluate(value[1], bindings)
+			expr = value[1] # non-strict is slower! 
+			#expr = evaluate(value[1], bindings)
 
 			if not isinstance(expr, tuple) or not expr[0] == ERROR:
 				bindings[value[0]] = expr # is not error, bind
@@ -922,8 +931,8 @@ def evaluate(root, bindings):
 			closure = evaluate((KEYWORD, def_id), bindings)
 		# get the closure to be called
 		else:
-			#closure = evaluate(bindings[def_id], bindings)	# nonstrict is slower!
-			closure = bindings[def_id]		
+			closure = evaluate(bindings[def_id], bindings)	# nonstrict is slower!
+			#closure = bindings[def_id]		
 		# if closure was found 
 		if isinstance(closure, Closure):
 			arg_count= len(args)
@@ -936,11 +945,23 @@ def evaluate(root, bindings):
 			elif def_id in controls: # do not eval
 				local_bindings	= {}
 				# bind all arguments to closures local bindings
+				if def_id == 'import': # modify the eval scope bindings!						 
+					local_bindings=  bindings
+				for bind in bindings:
+					local_bindings[bind] = bindings[bind]
+				# bind all arguments to closures local bindings
 				if def_id in controls: # do not eval
-					for i in range(0, arg_count):
-						bindings[params[i]] = args[i] 
-				expr = eval_builtin(def_id, bindings)
-							
+					if param_count != -1: # not var_arg
+						for i in range(0, arg_count):
+							#bindings[params[i]] = args[i]
+							local_bindings[params[i]] = args[i]
+					else:
+						param = 0
+						for i in range(0, arg_count): 
+							local_bindings[str(param)] = args[i] 
+							param += 1	
+
+					expr = eval_builtin(def_id, local_bindings)			
 			else:
 				# if a application closure
 				local_bindings	= {}
@@ -979,8 +1000,8 @@ def evaluate(root, bindings):
 		# eval all exprs into list object
 		expr = []
 		for arg in value:
-			#expr.append(evaluate(arg, bindings))
-			expr.append(arg) # nonstrict
+			expr.append(arg)
+
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
@@ -994,6 +1015,36 @@ def evaluate(root, bindings):
 	#else error		
 	return expr
  
+
+def to_string(root, bindings): # do not evaluate, but parse the ast nodes and return string represenation for printing	
+	s=''
+	if isinstance(root, tuple):
+		tag, value =root
+		if tag in [INT, FLOAT, STRING, KEYWORD, BUILTIN]:
+			s = to_string(value,bindings)
+		elif tag == ID:
+			if value in bindings.keys():
+				s = to_string(bindings[s],bindings)
+			else:
+				expr = 'ERROR:' + str(var[1]) + ' not defined'			
+		elif tag == LIST:
+			for e in value:
+				s += to_string(e,bindings)
+		elif tag == CLOSURE:
+			s = '<proc:' + to_string(value,bindings) + '>'	
+		elif tag == APPLY:
+			s = '(' + to_string(value[0],bindings) + ' ' 
+			for arg in value[1]:
+				s += to_string(arg,bindings)	 + ' '
+			s += ')'
+	elif isinstance(root, list):
+		s = '['
+		for e in root:
+			s += to_string(e, bindings) + ' '
+		s += ']'	
+	else:
+		s = str(root)
+	return s 	
 
 # Run main after all defintions 
 if __name__ == '__main__':
