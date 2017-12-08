@@ -501,13 +501,18 @@ def eval_exp(bindings):
 	return expr
 
 def eval_not(bindings):
-	expr = bindings['0']
+	left = bindings['0']
 	del bindings['0']
-	expr = evaluate(expr, bindings)
-	if not expr or expr == 'false':
-		return  'true'
+	expr = None
+	left = evaluate(left, bindings)
+	if left == 0 or left == 'false':
+		expr =  'true'
 	else:
-		return  'false'	
+		expr = 'false'
+	if isinstance(left, tuple) and left[0] == ERROR :
+		expr = left
+
+	return expr
 
 def eval_lt(bindings):
 	left = bindings['0']
@@ -516,9 +521,14 @@ def eval_lt(bindings):
 	left = evaluate(left, bindings)
 	right = evaluate(right, bindings)
 	if left < right:
-		return  'true'
+		expr =  'true'
 	else:
-		return  'false'
+		expr = 'false'
+	if isinstance(left, tuple) and left[0] == ERROR :
+		expr = left
+	elif isinstance(right, tuple) and right[0] == ERROR:
+		expr = right
+	return expr
 
 def eval_gt(bindings):
 	left = bindings['0']
@@ -527,9 +537,14 @@ def eval_gt(bindings):
 	left = evaluate(left, bindings)
 	right = evaluate(right, bindings)
 	if left > right:
-		return  'true'
+		expr =  'true'
 	else:
-		return  'false'
+		expr = 'false'
+	if isinstance(left, tuple) and left[0] == ERROR :
+		expr = left
+	elif isinstance(right, tuple) and right[0] == ERROR:
+		expr = right
+	return expr
 
 def eval_eq(bindings):
 	left = bindings['0']
@@ -538,9 +553,14 @@ def eval_eq(bindings):
 	left = evaluate(left, bindings)
 	right = evaluate(right, bindings)
 	if left == right:
-		return  'true'
+		expr =  'true'
 	else:
-		return  'false'
+		expr = 'false'
+	if isinstance(left, tuple) and left[0] == ERROR :
+		expr = left
+	elif isinstance(right, tuple) and right[0] == ERROR:
+		expr = right
+	return expr
 	
 def eval_and(bindings):
 	left = bindings['0']
@@ -548,26 +568,34 @@ def eval_and(bindings):
 	del bindings['0']; del bindings['1']
 	left = evaluate(left, bindings)
 	right = evaluate(right, bindings)
-	if left and right:
-		return  'true'
+	if (left != 0 and left != 'false') and (right != 'false' and right != 0):
+		expr = 'true'
 	else:
-		return  'false'
+		expr = 'false'
+	if isinstance(left, tuple) and left[0] == ERROR :
+		expr = left
+	elif isinstance(right, tuple) and right[0] == ERROR:
+		expr = right
+	return expr
 
 def eval_or(bindings):
 	left = bindings['0']
 	right = bindings['1']
 	del bindings['0']; del bindings['1']
 	left = evaluate(left, bindings)
-	# lazy eval
-	if left:		
-		right = evaluate(right, bindings)	
-		expr = left or right
+	# lazy eval is left is not true
+	if left == 'false' or left == 0: 		
+		right = evaluate(right, bindings)
+		if right != 0 and right == 'true':
+			expr = 'true'
+		else:
+			expr = 'false'
 	else:
-		expr = left
-	if expr:
 		expr = 'true'
-	else:
-		expr = 'false'
+	if isinstance(left, tuple) and left[0] == ERROR :
+		expr = left
+	elif isinstance(right, tuple) and right[0] == ERROR:
+		expr = right	
 	return expr
 
 
@@ -1002,12 +1030,19 @@ def evaluate(root, bindings):
 			closure =  evaluate(def_id, bindings) # if the def_id is not an id but a closure		
 		elif def_id[0] == APPLY:
 			closure = evaluate(def_id, bindings)
-		# if not an application, and not user defined, request builtin closure def
-		elif def_id not in bindings:
-			closure = evaluate((KEYWORD, def_id), bindings)
 		# get the closure to be called
 		else:
-			closure = evaluate(bindings[def_id], bindings)	# nonstrict is slower!
+			# must be identifier, if not application of closure
+			if isinstance(def_id, str): 
+				# if not an application, and not user defined, request builtin closure def
+				if def_id not in bindings:
+					closure = evaluate((KEYWORD, def_id), bindings)
+				else:
+					closure = evaluate(bindings[def_id], bindings)	# nonstrict is slower!
+			else:	
+				closure = (ERROR, "Invalid Type:("+str(type(def_id))+
+						" )Application Expected <Abstraction|Id|Application>")
+
 		# if closure was found 
 		if isinstance(closure, Closure):
 			arg_count= len(args)
