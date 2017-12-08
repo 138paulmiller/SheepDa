@@ -44,10 +44,15 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 TYPE 	= 'TYPE'
+# #arithmetic, #bool, #type conversion, IO,  and list apps
+keywords = ['*','/', '%','+', '-','root', 'exp',  
+			'<', '>', 'eq', 'and','or','not', 'true', 'false', 
+			'type', 'int', 'float', 'string', 'bool', 
+			'print', 'read', 
+			'range', 'filter', 'map', 'fold','reverse', 'head', 'tail'
+			]
 
-keywords = ['*','/', '%','+', '-','<', '>', 'eq', 'and','or','not', 'type', \
-			'print', 'read', 'true', 'false', 'range', 'filter', 'map', 'fold',\
-			 'int', 'float', 'string', 'list', 'bool']
+# lazily evaluate control flow application
 controls = ['if', 'import', 'exit', 'while', 'set', 'list']
 
 #------------------------Repl--------------------------#
@@ -492,14 +497,14 @@ def eval_exp(bindings):
 	try:
 		expr = evaluate(left, bindings) ** (evaluate(right, bindings))
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (root <Int|Float> <Int|Float>)')		
+		expr = (ERROR, 'Invalid Operands: Expected  (exp <Int|Float> <Int|Float>)')		
 	return expr
 
 def eval_not(bindings):
 	expr = bindings['0']
 	del bindings['0']
 	expr = evaluate(expr, bindings)
-	if not expr:
+	if not expr or expr == 'false':
 		return  'true'
 	else:
 		return  'false'	
@@ -599,7 +604,14 @@ def eval_print(bindings):
 	print(expr)
 	return 'true' 
 
-
+def eval_read(bindings):
+	expr = None
+	if bindings.has_key('0'):
+		expr = bindings['0'] #expect file name if given, else read from stdio
+		del bindings['0']
+	else:
+		expr = raw_input()
+	return expr
 def eval_int(bindings):
 	expr = bindings['0']
 	del bindings['0']
@@ -686,16 +698,16 @@ def eval_if(bindings):
 	expr = None		
 	del bindings['0']; del bindings['1']; del bindings['2'] # null args in case they are used
 	cond = evaluate(cond, bindings)
-	if cond != [] and cond != 'false' and (cond == 'true' or cond != 0) :
-		# if error
-		if isinstance(cond, tuple) and cond[0] == ERROR:
-			expr = cond	
-		else:
+	# if error
+	if isinstance(cond, tuple) and cond[0] == ERROR:
+		expr = cond	
+	else:	
+		if cond != [] and cond != 'false' and (cond == 'true' or cond != 0) :
 			# evaluate true expr
 			expr = evaluate(true_expr, bindings)	
-	else:
-		# evaluate false expr
-		expr = evaluate(false_expr, bindings)	
+		else:
+			# evaluate false expr
+			expr = evaluate(false_expr, bindings)	
 	return expr
 	
 
@@ -818,7 +830,7 @@ def eval_map(bindings):
 				while i < list_size:				
 					# eval args at call scope, [x y] should not refer to \x y . in abstactions
 					for j in range(0, len(closure.params)):
-						closure.bindings[closure.params[j]] = evaluate(list_args[j][i],bindings)
+						closure.bindings[closure.params[j]] = evaluate(list_args[j][i],	bindings)
 					result = evaluate(closure.expr, closure.bindings)
 					if isinstance(result, tuple ) and result[0] == ERROR:
 						return result # get error
@@ -900,12 +912,13 @@ builtins = {
 	'import':(eval_import,1),
 	'list'	:(eval_list, -1),
 	'exit':(eval_exit,1),
-	# operators
+	# arithmetic
 	'+'	:(eval_add, 2),
 	'-'	:(eval_sub,2),
 	'*'	:(eval_mul, 2),
 	'/'	:(eval_div, 2),
 	'%'	:(eval_mod, 2),
+	#bools
 	'<'	:(eval_lt, 2),
 	'>'	:(eval_gt,2),
 	'eq'	:(eval_eq,2),
@@ -914,10 +927,11 @@ builtins = {
 	'and'	:(eval_and,2),
 	'or'	:(eval_or,2),
 	'not'	:(eval_not,1),
-	'type'	:(eval_type,1),
-	# utilities
-
+	# IO
 	'print'	:(eval_print,1 ),
+	'read'	:(eval_read,-1 ),
+	# types	
+	'type'	:(eval_type,1),
 	'int'	:(eval_int, 1),
 	'float'	:(eval_float, 1),
 	'string'	:(eval_string, 1),
@@ -994,7 +1008,6 @@ def evaluate(root, bindings):
 		# get the closure to be called
 		else:
 			closure = evaluate(bindings[def_id], bindings)	# nonstrict is slower!
-			#closure = bindings[def_id]		
 		# if closure was found 
 		if isinstance(closure, Closure):
 			arg_count= len(args)
@@ -1003,7 +1016,7 @@ def evaluate(root, bindings):
 			if param_count != -1 and param_count != arg_count:
 				# get closure like call to display
 				expr = (ERROR, 'Incorrect number of arguments passed to application: '\
-						+ to_string(closure, bindings))			
+						+ str(def_id) + " " + to_string(closure, bindings))			
 			elif def_id in controls: # do not eval
 				local_bindings	= {}
 				# bind all arguments to closures local bindings

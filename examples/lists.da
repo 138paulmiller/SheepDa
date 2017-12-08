@@ -1,0 +1,18 @@
+;sum first 100 integers [1 .. 100]
+(print (fold + 0 (range 1 101)))
+
+;multiply (1*(2*(3*...))) but squareroot each result
+(print (fold 	(\x y. (+ (root x y) 2)) ;proc takes head and result of tail
+				1 						;initial value
+				(range 0 10)))			;argument list	
+
+;filter list objects
+not_the = (\word. (not (eq word "the")))
+sentence = ["These" "are" "the" "words" "the" "program" "will" "filter" "..." "the" ] 
+(print (filter not_the sentence))
+
+
+;mapping multiple string
+;proc arg must match number of lists
+(print (map (\x y z. (x y z) ) [+ * - exp] [2 2 2 2] [5 5 5 5] ))
+
