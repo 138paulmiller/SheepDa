@@ -753,7 +753,7 @@ def eval_reverse(bindings):
 	arg =  bindings['0']
 	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> ...)') 
+		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> )') 
 	else:
 		 expr = arg[::-1] #reverses list in pythonic way with slicing 
 	return expr
@@ -764,7 +764,7 @@ def eval_head(bindings):
 	arg =  bindings['0']
 	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> ...)') 
+		expr = (ERROR, 'Invalid Operands: Expected (head <list>)') 
 	else:
 		# evaluate the elements value
 		expr = evaluate(arg[0],bindings) #reverses list in pythonic way with slicing 
@@ -776,7 +776,7 @@ def eval_tail(bindings):
 	arg =  bindings['0']
 	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> ...)') 
+		expr = (ERROR, 'Invalid Operands: Expected (tail <list>)') 
 	else:
 		 expr =argbindings['0'][1:] #reverses list in pythonic way with slicing 
 	return expr
@@ -789,39 +789,42 @@ def eval_map(bindings):
 	expr = None
 	list_args = []
 	list_size = 0
-	closure = bindings['0']
-	del bindings['0'] # null args in case they are used
-	if not closure or not isinstance(closure, Closure):
-		expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 	
-	# get all args
-	i = 1 #list args		
-	while bindings.has_key(str(i)) and not expr: 
-		list_args.append(bindings[str(i)])
-		if list_size is 0:
-			list_size = len(list_args[-1])
-		elif not list_size is len(list_args[-1]):	
-		  	expr = (ERROR, 'All list arguments must be of equal length: Expected (map <abstraction> <list> ...)') 
-		elif not isinstance(list_args[-1], list):
-			expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
-		i += 1
-	# see if len(args) matches len of closure, if variable args, just pass
-	if not expr:
-		if closure.param_count != -1 and len(list_args) != closure.param_count:
-		 	expr = (ERROR, 'Invalid Abstraction: Must be a parameter for each list : (map <abstraction> <list> ...)') 		
-		else:
-			i = 0 # cur eval element
-			expr = []	
-			# var args 
-			while i < list_size:				
-				# eval args at call scope, [x y] should not refer to \x y . in abstactions
-				for j in range(0, len(closure.params)):
-					closure.bindings[closure.params[j]] = evaluate(list_args[j][i],bindings)
-				result = evaluate(closure.expr, closure.bindings)
-				if isinstance(result, tuple ) and result[0] == ERROR:
-					return result # get error
-				else:
-					expr.append( result)
-				i += 1
+	if not bindings.has_key('0'):
+		expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
+	else:
+		closure = bindings['0']
+		del bindings['0'] # null args in case they are used
+		if not closure or not isinstance(closure, Closure):
+			expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 	
+		# get all args
+		i = 1 #list args		
+		while bindings.has_key(str(i)) and not expr: 
+			list_args.append(bindings[str(i)])
+			if list_size is 0:
+				list_size = len(list_args[-1])
+			elif not list_size is len(list_args[-1]):	
+			  	expr = (ERROR, 'All list arguments must be of equal length: Expected (map <abstraction> <list> ...)') 
+			elif not isinstance(list_args[-1], list):
+				expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
+			i += 1
+		# see if len(args) matches len of closure, if variable args, just pass
+		if not expr:
+			if closure.param_count != -1 and len(list_args) != closure.param_count:
+			 	expr = (ERROR, 'Invalid Abstraction: Must be a parameter for each list : (map <abstraction> <list> ...)')
+			else:
+				i = 0 # cur eval element
+				expr = []	
+				# var args 
+				while i < list_size:				
+					# eval args at call scope, [x y] should not refer to \x y . in abstactions
+					for j in range(0, len(closure.params)):
+						closure.bindings[closure.params[j]] = evaluate(list_args[j][i],bindings)
+					result = evaluate(closure.expr, closure.bindings)
+					if isinstance(result, tuple ) and result[0] == ERROR:
+						return result # get error
+					else:
+						expr.append( result)
+					i += 1
 	return expr
 
 def eval_filter(bindings):

@@ -14,7 +14,7 @@ I will be spending time adding various features to the language to help it evolv
 	<stmt>	: <id> = <expr>			// Binds expression to identifier
 		| <expr>			// Stand-alone Expression
 		| ; <sym> ... \n		// Comments, ends at newline
-	<expr>	: \ <param_id> <...> . <expr>	// Defines an abstraction
+	<expr>	: (\ <param_id> <...> . <expr>)	// Defines an abstraction
 		| (<expr> <expr> <..>)		// Applies expressions on the right to the leftmost expression
 		| [0-9]+.?[0-9]*		// Integer of Floating point number 
 		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier 
