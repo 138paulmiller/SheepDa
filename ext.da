@@ -1,0 +1,13 @@
+;Paul Miller - SheepDa Extended Definitions
+;Potential Standard Library for various utility functions
+
+;Allows for multiple boolean cases
+cond 	= (\cond . (\expr.(fold cond true expr) ) )
+and_all = (cond and)
+and_or 	= (cond and)
+
+;usage - And's or Or's all expressions in a given list
+;(and_all [(< 4 5)  true 0 ] )	; false
+;(and_all [(< 0 5) 1 true 1 ] )	; false
+;(or_all [(< 0 5) 1 true 1 ] )	; true
+

@@ -16,3 +16,11 @@ sentence = ["These" "are" "the" "words" "the" "program" "will" "filter" "..." "t
 ;proc arg must match number of lists
 (print (map (\x y z. (x y z) ) [+ * - exp] [2 2 2 2] [5 5 5 5] ))
 
+;Lazyness
+x = [(* 8 8) ( * 9 8) 3 "Hello" ]
+(print x)
+(print (reverse x))
+(print (head x))
+(print (tail x))
+(print (head (tail x)))
+

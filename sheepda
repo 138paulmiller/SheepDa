@@ -110,7 +110,7 @@ def interpret(source, bindings, is_file=False, is_repl =False):
 	# evaluate each expr in ast
 
 	for node in ast:		
-		expr = evaluate(node, bindings)
+		expr = evaluate(node, bindings)	
 		#exprs.append(expr)	
 		if isinstance(expr, tuple):						
 			if expr[0] == ERROR:
@@ -354,7 +354,6 @@ class Closure:
 		self.bindings = {}
 		for def_id in bindings.keys():
 			self.bindings[def_id] = bindings[def_id]
-		self.tail_rec = False
 		# parameters to be substituted at call binding scope
 		self.expr = expr
 		self.params = []
@@ -376,6 +375,19 @@ class Closure:
 			s += to_string(p,self.bindings)
 		return s + '>'
 	
+class Thunk:
+	'''
+	Trampolined Objects
+	Returned by application calls to be evaluated.
+	'''
+	def __init__(self, expr, bindings, is_builtin=False):
+		self.bindings = {}
+		for def_id in bindings.keys():
+			self.bindings[def_id] = bindings[def_id]
+		self.expr = expr
+		self.is_builtin = is_builtin
+	
+
 #------------------------Evaluate Builtins--------------------------#
 def eval_add(bindings):
 	left = bindings['0']
@@ -818,7 +830,7 @@ def eval_tail(bindings):
 	if not arg or not isinstance(arg, list):
 		expr = (ERROR, 'Invalid Operands: Expected (tail <list>)') 
 	else:
-		 expr =argbindings['0'][1:] #reverses list in pythonic way with slicing 
+		 expr = arg[1:] #pythinic get remaining 
 	return expr
 
 def eval_map(bindings):
@@ -998,14 +1010,25 @@ def eval_builtin(root, bindings):
 	return expr
 
 #------------------------Evaluate --------------------------#
+''' TODO
+def evaluate(root, bindings):
+	# Trampoline evaluation thunks 
+	expr = evaluate_thunk(root, bindings)
+	while isinstance(expr, Thunk):
+		if expr.is_builtin:
+			expr = eval_builtin(expr.expr, expr.bindings)		
+		else:
+			expr = evaluate_thunk(expr.expr, expr.bindings)
+	return expr
+'''
 def evaluate(root, bindings):
 	expr = root # evaluated expression
 	tag, value = (None, None)
-
 	try:
 		tag, value = root
 	except:
 		pass
+	
 	if tag == ASSIGN:
 		# add expr to binding with def_id key
 		if bindings.get(value[0]):
@@ -1070,7 +1093,8 @@ def evaluate(root, bindings):
 						for i in range(0, arg_count): 
 							local_bindings[str(param)] = args[i] 
 							param += 1	
-					expr = eval_builtin(def_id, local_bindings)			
+					expr = eval_builtin(def_id, local_bindings)	
+					###expr = Thunk(def_id, local_bindings, True) # is builtin		
 			else:
 				# if a application closure
 				local_bindings	= {}
@@ -1090,6 +1114,7 @@ def evaluate(root, bindings):
 						local_bindings[str(param)] = evaluate(args[i], bindings) 
 						param += 1		
 				expr = evaluate(closure.expr, local_bindings)
+				###expr = Thunk(closure.expr, local_bindings)
 		# empty closure, could not find
 		else:
 			if closure:
