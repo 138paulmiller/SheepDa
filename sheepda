@@ -744,10 +744,12 @@ def eval_if(bindings):
 	else:	
 		if cond != [] and cond != 'false' and (cond == 'true' or cond != 0) :
 			# evaluate true expr
-			expr = evaluate(true_expr, bindings)	
+			#expr = evaluate(true_expr, bindings)	
+			expr = Thunk(true_expr, bindings)	
 		else:
 			# evaluate false expr
-			expr = evaluate(false_expr, bindings)	
+			#expr = evaluate(false_expr, bindings)	
+			expr = Thunk(false_expr, bindings)	
 	return expr
 	
 
@@ -1010,18 +1012,14 @@ def eval_builtin(root, bindings):
 	return expr
 
 #------------------------Evaluate --------------------------#
-''' TODO
 def evaluate(root, bindings):
 	# Trampoline evaluation thunks 
 	expr = evaluate_thunk(root, bindings)
 	while isinstance(expr, Thunk):
-		if expr.is_builtin:
-			expr = eval_builtin(expr.expr, expr.bindings)		
-		else:
-			expr = evaluate_thunk(expr.expr, expr.bindings)
+		expr = evaluate_thunk(expr.expr, expr.bindings)
 	return expr
-'''
-def evaluate(root, bindings):
+
+def evaluate_thunk(root, bindings):
 	expr = root # evaluated expression
 	tag, value = (None, None)
 	try:
@@ -1093,8 +1091,8 @@ def evaluate(root, bindings):
 						for i in range(0, arg_count): 
 							local_bindings[str(param)] = args[i] 
 							param += 1	
-					expr = eval_builtin(def_id, local_bindings)	
-					###expr = Thunk(def_id, local_bindings, True) # is builtin		
+					###expr = eval_builtin(def_id, local_bindings)	
+					expr = Thunk((BUILTIN, def_id), local_bindings) # is builtin		
 			else:
 				# if a application closure
 				local_bindings	= {}
@@ -1113,8 +1111,8 @@ def evaluate(root, bindings):
 					for i in range(0, arg_count):
 						local_bindings[str(param)] = evaluate(args[i], bindings) 
 						param += 1		
-				expr = evaluate(closure.expr, local_bindings)
-				###expr = Thunk(closure.expr, local_bindings)
+				###expr = evaluate(closure.expr, local_bindings)
+				expr = Thunk(closure.expr, local_bindings)
 		# empty closure, could not find
 		else:
 			if closure:
