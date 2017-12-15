@@ -15,7 +15,7 @@ VERSION = 0.1
 DEBUG = True
 HELP = file(os.path.dirname(os.path.abspath(__file__))+"/HELP").read()
 SYNTAX = file(os.path.dirname(os.path.abspath(__file__))+"/SYNTAX").read()
-
+global_bindings = {}
 '''
 AST Node Tags
 '''
@@ -61,14 +61,15 @@ def main(args):
 	   input = raw_input
 	except NameError:
 		pass
-	bindings = {} 
+	global global_bindings	
+	global_bindings = {} 
 	if len(args) > 0: 
 		if args[0] == '-h':
 			print(HELP)
 		elif args[0] == '-s':
 			print(SYNTAX)
 		else:
-			interpret(args[0], bindings, True) # interp file
+			interpret(args[0], global_bindings, True) # interp file
 	else: # repl
 		print('\nSheepDa Version '+str(VERSION)+'\nIf you are new, type help')		
 		history = [] # stack of previous entered commands unlimited??
@@ -76,19 +77,18 @@ def main(args):
 		cur = 0
 		quit = False
 		while not quit :
-			source = input('@>')
-			
+			source = input('@>')	
 			history.append(source)
 			cur += 1
 			if source == 'help':
 				print(HELP)
 			elif source == 'unbind':
 				# delete all user defined bindings
-				bindings.clear() 
+				global_bindings.clear() 
 			elif source == 'quit':
 				quit = True
 			else:
-				interpret(source, bindings, is_repl=True)						
+				interpret(source, global_bindings, is_repl=True)						
 		print('Goodbye') 
 
 
@@ -771,9 +771,10 @@ def eval_import(bindings):
 	src_file = bindings['0']
 	del bindings['0']
 	source = evaluate(src_file, bindings)
-	# interpret the file
-	expr =  interpret(source, bindings, True)
-
+	# interpret the file at the global binding level
+	global global_bindings
+	expr =  interpret(source, global_bindings, True)
+	
 	if not isinstance(expr, tuple) or not expr[0] == ERROR:
 		expr = 'true'
 	return expr
@@ -1133,7 +1134,6 @@ def evaluate_thunk(root, bindings):
 		expr = []
 		for arg in value:
 			expr.append(arg)
-
 	elif tag == FLOAT:
 		expr = float(value)
 	elif tag == INT:
