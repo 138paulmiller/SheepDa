@@ -1,14 +1,10 @@
 #!/usr/bin/env python
-
 '''
 SheepDa - A "Soft" Functional Scripting Language
-
 Copyright 2017 Paul Miller (github.com/138paulmiller)
-
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 '''
 import sys, os
 VERSION = 0.1
@@ -24,7 +20,6 @@ CLOSURE = 'CLOSURE'  # Lambda Abstaction
 ASSIGN 	= 'ASSIGN'  # Variable assignement
 BUILTIN = 'BUILTIN' # Builtin Variables
 LIST 	= 'LIST'
-
 '''
 Token Symbol Tags
 '''
@@ -44,7 +39,7 @@ EOI 	= 'EOI'
 ERROR 	= 'ERROR'
 KEYWORD	= 'KEYWORD' 
 TYPE 	= 'TYPE'
-# #arithmetic, #bool, #type conversion, IO,  and list apps
+# arithmetic, bool, type conversion, IO,  and list apps
 keywords = ['*','/', '%','+', '-','root', 'exp',  
 			'<', '>', 'eq', 'and','or','not', 'true', 'false', 
 			'type', 'int', 'float', 'string', 'bool', 
@@ -52,7 +47,7 @@ keywords = ['*','/', '%','+', '-','root', 'exp',
 			'range', 'filter', 'map', 'fold','reverse', 'head', 'tail'
 			]
 
-# lazily evaluate control flow application
+# lazily evaluate control flow applications
 controls = ['if', 'import', 'exit', 'while', 'set', 'list']
 
 #------------------------Repl--------------------------#
@@ -101,14 +96,11 @@ def interpret(source, bindings, is_file=False, is_repl =False):
 		except:
 			expr = (ERROR, 'Import file not found:'+ str(source))
 			print expr[0], ' ', expr[1] 
-			return expr
-			
+			return expr	
 	lexer = Lexer(source)
 	# generate ast [expr ... ]
 	ast = parse(lexer)
-	#exprs = []		
 	# evaluate each expr in ast
-
 	for node in ast:		
 		expr = evaluate(node, bindings)	
 		#exprs.append(expr)	
@@ -118,9 +110,7 @@ def interpret(source, bindings, is_file=False, is_repl =False):
 				break
 		# print only expr(non-tokens  or nontuples)
 		elif is_repl:
-			
 			print (to_string(expr,bindings))
-
 
 #------------------------Lexer --------------------------#	
 class Lexer:
@@ -140,7 +130,6 @@ class Lexer:
 		token = None
 		# eat whitespace
 		skip = True
-		
 		while self.pos < self.len and  \
 		  (self.input[self.pos] == ' '  or \
 		  self.input[self.pos] == '\t' or \
@@ -401,7 +390,7 @@ def eval_add(bindings):
 			left = str(left)
 		expr = left + right
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected (+ <Int|Float|String> <Int|Float|String>)')
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (+ <Int|Float|String> <Int|Float|String>)')
 	return expr
 
 def eval_sub(bindings):
@@ -451,7 +440,7 @@ def eval_mul(bindings):
 		try:			
 			expr = left * right
 		except:			
-			expr = (ERROR, 'Invalid Operands: Expected  (* <Int|Float|String> <Int|Float|String>)')
+			expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (* <Int|Float|String> <Int|Float|String>)')
 	return expr						
 
 def eval_div(bindings):
@@ -473,7 +462,7 @@ def eval_div(bindings):
 		else:
 			expr = left / right	
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (/ <Int|Float|String> <Int|Float|String>)')
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (/ <Int|Float|String> <Int|Float|String>)')
 	return expr							
 
 def eval_mod(bindings):
@@ -484,7 +473,7 @@ def eval_mod(bindings):
 	try:
 		expr = evaluate(left,bindings) % evaluate(right,bindings)	
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (% <Int|Float> <Int>)')
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (% <Int|Float> <Int>)')
 	return expr							
 
 
@@ -497,7 +486,7 @@ def eval_root(bindings):
 	try:
 		expr = evaluate(left, bindings) ** (1.0/evaluate(right, bindings))
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (root <Int|Float> <Int|Float>)')		
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (root <Int|Float> <Int|Float>)')		
 	return expr
 
 def eval_exp(bindings):
@@ -509,7 +498,7 @@ def eval_exp(bindings):
 	try:
 		expr = evaluate(left, bindings) ** (evaluate(right, bindings))
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (exp <Int|Float> <Int|Float>)')		
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (exp <Int|Float> <Int|Float>)')		
 	return expr
 
 def eval_not(bindings):
@@ -658,7 +647,7 @@ def eval_int(bindings):
 	try :
 		expr = int(evaluate(expr, bindings))
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (int <Int|Float|String> <Int|Float|String>)')		
+		expr = (ERROR, 'Invalid Operands: ' + to_string(expr,bindings)+ '\nExpected  (int <Int|Float|String> )')		
 	return expr 
 
 def eval_float(bindings):
@@ -667,7 +656,7 @@ def eval_float(bindings):
 	try :
 		expr = float(evaluate(expr, bindings))
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String> <Int|Float|String>)')		
+		expr = (ERROR, 'Invalid Operands: ' + to_string(expr,bindings)+ '\nExpected  (float <Int|Float|String> )')		
 	return expr 
 
 def eval_bool(bindings):
@@ -680,7 +669,7 @@ def eval_bool(bindings):
 		elif expr != 'true':
 			expr = 'false'
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String> <Int|Float|String>)')		
+		expr = (ERROR, 'Invalid Operands: ' + to_string(expr,bindings)+ '\nExpected  (bool <Int|Float|String> )')		
 	return expr 
 
 def eval_string(bindings):
@@ -695,7 +684,7 @@ def eval_string(bindings):
 		else:
 			expr = str(value)
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (float <Int|Float|String|List> <Int|Float|String|List>)')		
+		expr = (ERROR, 'Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (string <Int|Float|String|List>)')		
 	return expr 
 
 def eval_list(bindings):
@@ -704,7 +693,9 @@ def eval_list(bindings):
 	i = 0
 	s = '0'
 	while bindings.has_key(s): 
-		expr.append(bindings[s])
+		arg = bindings[s]
+		del bindings[s] 
+		expr.append(evaluate(arg, bindings))
 		i+=1
 		s = str(i)
 	return expr 
@@ -727,7 +718,7 @@ def eval_set(bindings):
 		else:
 			expr = (ERROR, 'Could not set: ' + str(var[1]) + ' not defined')			
 	else:
-		expr = (ERROR, 'Invalid Operands: Expected  (set <id> <expr>)')		
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (set <id> <expr>)')		
 	return expr
 
 
@@ -774,7 +765,6 @@ def eval_import(bindings):
 	# interpret the file at the global binding level
 	global global_bindings
 	expr =  interpret(source, global_bindings, True)
-	
 	if not isinstance(expr, tuple) or not expr[0] == ERROR:
 		expr = 'true'
 	return expr
@@ -797,7 +787,7 @@ def eval_range(bindings):
 			expr.append(start)	
 			start += d
 	except:
-		expr = (ERROR, 'Invalid Operands: Expected  (range <Int> <Int>)')
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected  (range <Int> <Int>)')
 
 	return expr
 
@@ -808,7 +798,7 @@ def eval_reverse(bindings):
 	arg =  bindings['0']
 	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (reverse <list> )') 
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (reverse <list> )') 
 	else:
 		 expr = arg[::-1] #reverses list in pythonic way with slicing 
 	return expr
@@ -819,7 +809,7 @@ def eval_head(bindings):
 	arg =  bindings['0']
 	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (head <list>)') 
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (head <list>)') 
 	else:
 		# evaluate the elements value
 		expr = evaluate(arg[0],bindings) #reverses list in pythonic way with slicing 
@@ -831,7 +821,7 @@ def eval_tail(bindings):
 	arg =  bindings['0']
 	del bindings['0'] # null args in case they are used
 	if not arg or not isinstance(arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (tail <list>)') 
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (tail <list>)') 
 	else:
 		 expr = arg[1:] #pythinic get remaining 
 	return expr
@@ -845,12 +835,12 @@ def eval_map(bindings):
 	list_args = []
 	list_size = 0
 	if not bindings.has_key('0'):
-		expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (map <abstraction> <list> ...)') 
 	else:
 		closure = bindings['0']
 		del bindings['0'] # null args in case they are used
 		if not closure or not isinstance(closure, Closure):
-			expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 	
+			expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (map <abstraction> <list> ...)') 	
 		# get all args
 		i = 1 #list args		
 		while bindings.has_key(str(i)) and not expr: 
@@ -860,7 +850,7 @@ def eval_map(bindings):
 			elif not list_size is len(list_args[-1]):	
 			  	expr = (ERROR, 'All list arguments must be of equal length: Expected (map <abstraction> <list> ...)') 
 			elif not isinstance(list_args[-1], list):
-				expr = (ERROR, 'Invalid Operands: Expected (map <abstraction> <list> ...)') 
+				expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (map <abstraction> <list> ...)') 
 			i += 1
 		# see if len(args) matches len of closure, if variable args, just pass
 		if not expr:
@@ -895,7 +885,7 @@ def eval_filter(bindings):
 	closure = evaluate(closure, bindings)
 	list_arg = evaluate(list_arg, bindings)
 	if not isinstance(closure, Closure) or not isinstance(list_arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (filter <cond-abstraction> <list>)') 	
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (filter <cond-abstraction> <list>)') 	
 	elif closure.param_count != 1:
 		expr = (ERROR, 'Invalid Abstraction: Must only have a single parameter')
 	else:
@@ -923,7 +913,7 @@ def eval_fold(bindings):
 	bindings['0']=bindings['1']=bindings['2']=None #disable in case they are used
 	if not closure or not isinstance(closure, Closure) \
 		or not list_arg or not isinstance(list_arg, list):
-		expr = (ERROR, 'Invalid Operands: Expected (fold <abstraction> <initial> <list>)') 
+		expr = (ERROR, ' Invalid Operands: '+to_string(expr,bindings)+'\nExpected (fold <abstraction> <initial> <list>)') 
 	elif closure.param_count != 2:
 		expr = (ERROR, 'Invalid abstraction Parameters: Expected 2 parameters in (fold <abstraction> <initial> <list>)') 
 	else:	
@@ -1064,7 +1054,6 @@ def evaluate_thunk(root, bindings):
 			else:	
 				closure = (ERROR, "Invalid Type:("+str(type(def_id))+
 						" )Application Expected <Abstraction|Id|Application>")
-
 		# if closure was found 
 		if isinstance(closure, Closure):
 			arg_count= len(args)
@@ -1074,47 +1063,39 @@ def evaluate_thunk(root, bindings):
 				# get closure like call to display
 				expr = (ERROR, 'Incorrect number of arguments passed to application: '\
 						+ str(def_id) + " " + to_string(closure, bindings))			
-			elif def_id in controls: # do not eval
-				local_bindings	= {}
-				# bind all arguments to closures local bindings
-				if def_id == 'import': # modify the eval scope bindings!						 
-					local_bindings=  bindings
-				for bind in bindings:
-					local_bindings[bind] = bindings[bind]
-				# bind all arguments to closures local bindings
-				if def_id in controls: # do not eval
-					if param_count != -1: # not var_arg
-						for i in range(0, arg_count):
-							#bindings[params[i]] = args[i]
-							local_bindings[params[i]] = args[i]
-					else:
-						param = 0
-						for i in range(0, arg_count): 
-							local_bindings[str(param)] = args[i] 
-							param += 1	
-					###expr = eval_builtin(def_id, local_bindings)	
-					expr = Thunk((BUILTIN, def_id), local_bindings) # is builtin		
 			else:
-				# if a application closure
 				local_bindings	= {}
 				# bind all arguments to closures local bindings
 				for bind in bindings:
 					local_bindings[bind] = bindings[bind]
 				# update closure bindings last, will add closure precedence over calling
-				for bind in closure.bindings.keys():
-					local_bindings[bind] = closure.bindings[bind]	
+				if not def_id in controls:
+					for bind in closure.bindings.keys():
+						local_bindings[bind] = closure.bindings[bind]	
 				if param_count != -1: # if not var args
 					# evaluate each argument and bind it to the local level 
-					for i in range(0, arg_count):
-						local_bindings[params[i]] = evaluate(args[i], bindings) 	
+					if def_id in controls:
+						for i in range(0, arg_count):
+							local_bindings[params[i]] = args[i]
+					else:
+						for i in range(0, arg_count):
+							local_bindings[params[i]] = evaluate(args[i], bindings) 	
 				else:
 					param = 0
-					for i in range(0, arg_count):
-						local_bindings[str(param)] = evaluate(args[i], bindings) 
-						param += 1		
+					if def_id in controls:
+						for i in range(0, arg_count): 
+							local_bindings[str(param)] = args[i] 
+							param+=1
+					else:
+						for i in range(0, arg_count):
+							local_bindings[str(param)] = evaluate(args[i], bindings) 
+							param += 1		
 				###expr = evaluate(closure.expr, local_bindings)
-				expr = Thunk(closure.expr, local_bindings)
-		# empty closure, could not find
+				if def_id in controls:
+					expr = Thunk((BUILTIN, def_id), local_bindings) # is builtin		
+				else:
+					expr = Thunk(closure.expr, local_bindings)
+			# empty closure, could not find
 		else:
 			if closure:
 				if isinstance(closure, tuple) and closure[0] == ERROR:
@@ -1158,7 +1139,7 @@ def to_string(root, bindings): # do not evaluate, but parse the ast nodes and re
 			if value in bindings.keys():
 				s = to_string(bindings[s],bindings)
 			else:
-				expr = 'ERROR:' + str(var[1]) + ' not defined'			
+				expr = 'ERROR:' + str(value) + ' not defined'			
 		elif tag == LIST:
 			for e in value:
 				s += to_string(e,bindings)

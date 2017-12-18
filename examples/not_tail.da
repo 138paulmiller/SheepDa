@@ -1,0 +1,6 @@
+f = (\x y . 
+	(if (> y 0 ) 
+		(list x 
+			(f x (- y 1))) 
+		(list) 
+	))

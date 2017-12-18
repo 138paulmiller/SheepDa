@@ -4,6 +4,6 @@ fib = (\ a b . (if
 					(and (print (f a))
 					 	(fib (+ a 1) b)) 
 				""))
-(fib 0 20) 
+(fib 0 10) 
 
 
