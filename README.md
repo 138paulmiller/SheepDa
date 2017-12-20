@@ -28,7 +28,7 @@ LISP-like prefix expressions with a lambda calculus like abstraction syntax.
 Anonymous functions using the lambda operator.
 
 
-	x = \ x y . (+ x y )			# Assign closed expression to x
+	x = ( \ x y . (+ x y ))		# Assign closed expression to x
 	(print (x 10 20))				# Prints 30, x->10
 	(print (\x y.(+ x y) 10 20))	# Also prints 30, lambda expression dynamically evaluated
 	
