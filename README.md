@@ -1,14 +1,14 @@
 # SheepDa
 ### A Soft Functional Scripting Language
 Sheepda provides a minimal syntax as a "Soft" introduction to Functional Programming concepts.
-Language features closures, dynamic binding, static scoping, and lazy evaluation with a syntax mixture of LISP and Lamba-Calculus. 
+SheepDa is a dynamiccal binding, static scoping, lazy evaluating, and tail-call optimized Language inspired by Lamba-Calculus. 
 
 #### Usage
 See HELP for menu
 
 ##### Why?
-This project started out as a small language to help programmers quickly understand fundamental functional programming concepts such as first-class functions, immutability and lazy-evaluation. 
-I will be spending time adding various features to the language to help it evolve from a toy language into a useful scripting language.
+This project started out as a small language to help programmers quickly understand fundamental functional programming concepts such as first-class functions, immutability and lazy-evaluation.
+See [Examples](/examples/) for various use cases.
 
 ##### Syntax:
 	<stmt>	: <id> = <expr>			// Binds expression to identifier
