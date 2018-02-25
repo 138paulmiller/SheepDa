@@ -18,7 +18,7 @@ I will be spending time adding various features to the language to help it evolv
 		| (<expr> <expr> <..>)		// Applies expressions on the right to the leftmost expression
 		| [0-9]+.?[0-9]*		// Integer of Floating point number 
 		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier 
-		| [ <expr> ... ]		// List, closed brakcets with exprs seperated by spaces
+		| [ <expr> ... ]		// List, space seperated
 		| "."				// String, anything encapsulated within quotes
 
 ##### Overview
@@ -61,5 +61,6 @@ Builtin List features.
 	(print p)			; 64
 	
 ### TODO:
-- [ ] FILE I/O applications to set where to print
+- [ ] FILE I/O applications 
+- [ ] Derived expression to extend current functionality, such as set, let, and case
 
