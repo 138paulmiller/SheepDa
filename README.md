@@ -11,13 +11,14 @@ This project started out as a small language to help programmers quickly underst
 See [Examples](/examples/) for various use cases.
 
 ##### Syntax:
+	<id>	: [a-zA-Z]+[a-zA-Z0-9]*		// Identifier
 	<stmt>	: <id> = <expr>			// Binds expression to identifier
 		| <expr>			// Stand-alone Expression
 		| ; <sym> ... \n		// Comments, ends at newline
 	<expr>	: (\ <param_id> <...> . <expr>)	// Defines an abstraction
 		| (<expr> <expr> <..>)		// Applies expressions on the right to the leftmost expression
 		| [0-9]+.?[0-9]*		// Integer of Floating point number 
-		| [a-zA-Z]+[a-zA-Z0-9]*		// Identifier 
+		| <id> 
 		| [ <expr> ... ]		// List, space seperated
 		| "."				// String, anything encapsulated within quotes
 
@@ -25,6 +26,53 @@ See [Examples](/examples/) for various use cases.
 Various example programs can be found in the example directory. 
 LISP-like prefix expressions with a lambda calculus like abstraction syntax.
 
+### Built-Ins
+	a,b...z are any objects of any type
+	l, l1, l2... are lists
+	f,f1 ... are functions
+	i i1 i2 .. .are identifiers
+	#### control (special form)
+	(if  a b c)	
+	(set i b)	
+	(while a b)	
+	(import a)
+	(exit a)
+	#### Arithmetic
+	(+ a b)
+	(- a b)
+	(* a b)
+	(/ a b)
+	(% a b)
+	##### Conditional
+	(< a b)
+	(> a b)
+	(eq a b)
+	(root a b)
+	(exp a b)
+	(and a b)
+	(or a b)
+	(not a)
+	# IO
+	(print a)
+	(read a [b ..] )
+	# Type	
+	(type a)
+	(int a)
+	(float a)
+	(string a)
+	(bool a)
+	# List 
+	(list a b )
+	(range a b)
+	(head l)
+	(tail l )
+	(reverse l )
+	(filter f l)
+	(fold f a l)
+	(map f l1 [l2 ... ]) 
+
+
+Note: Type conversions tries its best. Not all types are convertable from each other. Same goes with arithmetic, and conditional, behavior depends on type.
 Anonymous functions using the lambda operator.
 
 
@@ -63,4 +111,4 @@ Builtin List features.
 ### TODO:
 - [ ] FILE I/O applications 
 - [ ] Derived expression to extend current functionality, such as set, let, and case
-
+- [ ] Create a golfing ext - shortens builtin identifiers
