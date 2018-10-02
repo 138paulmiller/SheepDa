@@ -1,49 +1,44 @@
 # SheepDa
+
 ### A Soft Functional Scripting Language
-Sheepda provides a minimal syntax as a "Soft" introduction to Functional Programming concepts.
-SheepDa is a dynamiccal binding, static scoping, lazy evaluating, and tail-call optimized Language inspired by Lamba-Calculus. 
+Weak and dynamically typed, statically bound, functional scripting language. Inspired by Lambda calculus with LISP/Scheme like syntax and features.   
+##### What do you mean by soft?
+The language is very forgiving, and tries its best when operating on varying types. This makes it easier for a programmer to see what happens without running into runtime errors. For instance, what will subtrcating a number from a string mean? SheepDa will implicity cast the number to a string, and remove all instances of the substring. See examples for more use cases.  
 
 #### Usage
 See HELP for menu
 
-##### Why?
-This project started out as a small language to help programmers quickly understand fundamental functional programming concepts such as first-class functions, immutability and lazy-evaluation.
-See [Examples](/examples/) for various use cases.
 
 ##### Syntax:
-	<id>	: [a-zA-Z]+[a-zA-Z0-9]*		// Identifier
-	<stmt>	: <id> = <expr>			// Binds expression to identifier
-		| <expr>			// Stand-alone Expression
-		| ; <sym> ... \n		// Comments, ends at newline
-	<expr>	: (\ <param_id> <...> . <expr>)	// Defines an abstraction
-		| (<expr> <expr> <..>)		// Applies expressions on the right to the leftmost expression
-		| [0-9]+.?[0-9]*		// Integer of Floating point number 
-		| <id> 
-		| [ <expr> ... ]		// List, space seperated
-		| "."				// String, anything encapsulated within quotes
+	Each production follows Regex Format 
+	Note: Whitespace is ignored, unless in string literal
+	id	: [a-zA-Z]+[a-zA-Z0-9]*		// Identifier
+	stmt	: id=expr			// Binds expression to identifier
+		| expr				// Stand-alone Expression
+		| ; .* \n			// Comments, ends at newline
+	exprs 	: expr \s exprs
+		| expr
+	expr	: (\\ id* \. expr )		// Defines an abstraction
+		| (expr expr* )			// Applies expressions on the right to the leftmost expression
+		| [0-9]+\.?[0-9]*		// Integer of Floating point number 
+		| id 
+		| \[ exprs \]			// List, Note: exprs are space seperated
+		| ".*"				// String, anything encapsulated within quotes
 
-##### Overview
-Various example programs can be found in the example directory. 
-LISP-like prefix expressions with a lambda calculus like abstraction syntax.
 
-### Built-Ins
-	a,b...z are any objects of any type
-	l, l1, l2... are lists
-	f,f1 ... are functions
-	i i1 i2 .. .are identifiers
-	#### control (special form)
+## Built-In Functions
+#### Special Form
 	(if  a b c)	
 	(set i b)	
 	(while a b)	
 	(import a)
 	(exit a)
-	#### Arithmetic
+#### Math
 	(+ a b)
 	(- a b)
 	(* a b)
 	(/ a b)
 	(% a b)
-	##### Conditional
 	(< a b)
 	(> a b)
 	(eq a b)
@@ -52,16 +47,16 @@ LISP-like prefix expressions with a lambda calculus like abstraction syntax.
 	(and a b)
 	(or a b)
 	(not a)
-	# IO
+#### IO
 	(print a)
 	(read a [b ..] )
-	# Type	
+#### Type	
 	(type a)
 	(int a)
 	(float a)
 	(string a)
 	(bool a)
-	# List 
+#### List 
 	(list a b )
 	(range a b)
 	(head l)
@@ -72,7 +67,7 @@ LISP-like prefix expressions with a lambda calculus like abstraction syntax.
 	(map f l1 [l2 ... ]) 
 
 
-Note: Type conversions tries its best. Not all types are convertable from each other. Same goes with arithmetic, and conditional, behavior depends on type.
+
 Anonymous functions using the lambda operator.
 
 
@@ -110,5 +105,5 @@ Builtin List features.
 	
 ### TODO:
 - [ ] FILE I/O applications 
-- [ ] Derived expression to extend current functionality, such as set, let, and case
-- [ ] Create a golfing ext - shortens builtin identifiers
+- [ ] Derived expression to extend current functionality, such as  case
+- [ ] Create a golfing ext - shorten builtin identifiers
